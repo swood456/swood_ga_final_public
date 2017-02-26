@@ -19,8 +19,6 @@
 #include "graphics/ga_cube_component.h"
 #include "graphics/ga_program.h"
 
-#include "gui/ga_font.h"
-
 #include "physics/ga_intersection.tests.h"
 #include "physics/ga_physics_component.h"
 #include "physics/ga_physics_world.h"
@@ -36,8 +34,6 @@
 #if defined(GA_MINGW)
 #include <unistd.h>
 #endif
-
-ga_font* g_font = nullptr;
 
 static void set_root_path(const char* exepath);
 static void run_unit_tests();
@@ -141,9 +137,6 @@ int main(int argc, const char** argv)
 	floor_collider.get_rigid_body()->make_static();
 	world->add_rigid_body(floor_collider.get_rigid_body());
 	sim->add_entity(&floor);
-
-	// Create the default font:
-	g_font = new ga_font("VeraMono.ttf", 16.0f, 512, 512);
 
 	// Main loop:
 	while (true)
