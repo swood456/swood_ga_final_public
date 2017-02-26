@@ -26,7 +26,7 @@ When you're done, your code should pass the unit tests in
 ga_intersection.tests.cpp (they are already called from main.cpp), as well as
 simulate the motion and collisions between several boxes added to the scene.
 
-1. Separating Axis Theorem
+Separating Axis Theorem
 This portion of the homework asks you to implement the separating axis test in
 ga_intersection.cpp.  Some code has already been written for you to construct
 bounding box objects that represent the shapes in world space.  You may ignore
@@ -36,7 +36,7 @@ calculate them for the collision response portion.
 When you've finished this portion of the assignment the unit tests should pass
 and you should see several boxes in the scene that don't move.
 
-2. Linear Dynamics
+Linear Dynamics
 This portion of the homework asks you to implement fourth-order Runge Kutta
 numerical integration to drive your physics simulation.  You will code your
 solution in step_linear_dynamics in ga_physics_world.cpp.
@@ -44,7 +44,7 @@ solution in step_linear_dynamics in ga_physics_world.cpp.
 When you're done with this portion of the assignment the boxes in the scene
 should move around.
 
-3. Collision Response
+Collision Response
 Finally, the last portion of the homework asks you to implement the linear
 dynamics half of collision response.  You will code your solution in
 resolve_collision in ga_physics_world.cpp.  Some code has already been written
@@ -61,7 +61,7 @@ come to rest on the floor.  The two boxes in the middle should come to rest
 stacked on top of each other.  Lastly the two boxes to the right should bounce
 off of each other.
 
-4. Angular Dynamics (Bonus)
+Angular Dynamics (Bonus)
 For 3 bonus points, you may implement the angular dynamics portion of the
 physics simulation.
 
