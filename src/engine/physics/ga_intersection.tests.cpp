@@ -30,6 +30,18 @@ void ga_intersection_utility_unit_tests()
 		assert(point_a.equal({ 0.0f, 1.0f, 0.0f }));
 		assert(point_b.equal({ 0.0f, 0.0f, 0.0f }));
 	}
+
+	// Test point to plane distance.
+	{
+		ga_vec3f point = { 0.0f, 25.0f, 0.0f };
+		ga_plane plane;
+		plane._point = { 0.0f, 24.0f, 0.0f };
+		plane._normal = ga_vec3f::y_vector();
+
+		float dist = distance_to_plane(point, &plane);
+
+		assert(ga_equalf(dist, 1.0f));
+	}
 }
 
 void ga_intersection_unit_tests()

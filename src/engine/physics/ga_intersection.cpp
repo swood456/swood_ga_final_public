@@ -17,7 +17,7 @@
 
 float distance_to_plane(const ga_vec3f& point, const ga_plane* plane)
 {
-	return plane->_normal.dot(plane->_point) + plane->_normal.dot(point);
+	return plane->_normal.dot(point) - plane->_normal.dot(plane->_point);
 }
 
 float distance_to_line_segment(const ga_vec3f& point, const ga_vec3f& a, const ga_vec3f& b)
