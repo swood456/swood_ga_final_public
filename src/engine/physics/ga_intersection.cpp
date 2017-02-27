@@ -316,6 +316,9 @@ bool separating_axis_test(const ga_shape* a, const ga_mat4f& transform_a, const 
 	// The center point of the project is the dot product of the box center with the axis.
 	// If there is any axis where there is no overlap, the objects are not colliding.
 
+	// The local variable 'collision' should be set true or false depending on whether the
+	// two boxes are interpenetrating.
+
 	if (collision && min_penetration_index < INT_MAX)
 	{
 		// The normal of the collision is the axis of minimum penetration.
