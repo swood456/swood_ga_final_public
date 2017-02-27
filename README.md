@@ -87,22 +87,23 @@ frame by pressing 'n'.
 * Remember that there are more than six axes to test for SAT of two oriented
 bounding boxes in 3D.  The other axes are the nine cross products of the
 boxes' half vectors.
-* Here's the shortest way to check if the projections of two objects
+
+Here's the shortest way to check if the projections of two objects
 overlap in your SAT algorithm:
 
 	bool overlap = !(min_a > max_b || max_a < min_b);
 
-* Here's code to calculate the amount of penetration along a particular
+Here's code to calculate the amount of penetration along a particular
 axis in your SAT algorithm:
 
 	float penetration = ga_min((max_b - min_a), (max_a - min_b));
 
-* Here's code to convert the std::chrono delta time to a float value for
+Here's code to convert the std::chrono delta time to a float value for
 your numerical integration:
 
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
 
-* Your collision resolution code needs to cover three cases:
+Your collision resolution code needs to cover three cases:
 
 	if (body_a->_flags & k_static)
 	{
