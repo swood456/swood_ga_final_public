@@ -19,8 +19,6 @@
 #include <assert.h>
 #include <ctime>
 
-#include <iostream>
-
 typedef bool (*intersection_func_t)(const ga_shape* a, const ga_mat4f& transform_a, const ga_shape* b, const ga_mat4f& transform_b, ga_collision_info* info);
 
 static intersection_func_t k_dispatch_table[k_shape_count][k_shape_count];
@@ -214,17 +212,18 @@ void ga_physics_world::resolve_collision(ga_rigid_body* body_a, ga_rigid_body* b
 	else
 	{
 		// Both bodies are not static
-		float tmp1 = (cor_average * 2 + 1) * (body_b->_velocity.dot(info->_normal) - body_a->_velocity.dot(info->_normal));
+			
+		float tmp1 = (cor_average + 1.0f) * (body_b->_velocity.dot(info->_normal) - body_a->_velocity.dot(info->_normal));
 		float tmp2 = (1.0f / body_a->_mass) + (1.0f / body_b->_mass);
 
 		ga_vec3f p_hat = info->_normal.scale_result(tmp1 / tmp2);
-
-
-		ga_vec3f a_delta_v = p_hat.scale_result(1.0f / body_a->_mass) * info->_normal;
-		ga_vec3f b_delta_v = p_hat.scale_result(1.0f / body_b->_mass) * info->_normal;
+		
+		ga_vec3f a_delta_v = p_hat.scale_result(1.0f / body_a->_mass);
+		ga_vec3f b_delta_v = p_hat.scale_result(1.0f / body_b->_mass);
 
 		body_a->_velocity = body_a->_velocity + a_delta_v;
-		body_b->_velocity = body_b->_velocity - b_delta_v;	
+		body_b->_velocity = body_b->_velocity - b_delta_v;
+
 	}
 
 }
