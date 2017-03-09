@@ -309,15 +309,67 @@ bool separating_axis_test(const ga_shape* a, const ga_mat4f& transform_a, const 
 	ga_vec3f min_penetration_axis;
 	uint32_t min_penetration_index = INT_MAX;
 
-	// TODO: Homework 5.
-	// First assemble all the axes to test for separation.
-	// Then, for each axis, project the two bounding boxes and check for overlap.
-	// To project a box onto the axis, sum the magnitudes of the projections of the half vectors.
-	// The center point of the project is the dot product of the box center with the axis.
-	// If there is any axis where there is no overlap, the objects are not colliding.
 
-	// The local variable 'collision' should be set true or false depending on whether the
-	// two boxes are interpenetrating.
+	axes.push_back(oobb_a._half_vectors[0]);
+	axes.push_back(oobb_a._half_vectors[1]);
+	axes.push_back(oobb_a._half_vectors[2]);
+
+	axes.push_back(oobb_b._half_vectors[0]);
+	axes.push_back(oobb_b._half_vectors[1]);
+	axes.push_back(oobb_b._half_vectors[2]);	
+
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[0], oobb_b._half_vectors[0]));
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[0], oobb_b._half_vectors[1]));
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[0], oobb_b._half_vectors[2]));
+
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[1], oobb_b._half_vectors[0]));
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[1], oobb_b._half_vectors[1]));
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[1], oobb_b._half_vectors[2]));
+
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[2], oobb_b._half_vectors[0]));
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[2], oobb_b._half_vectors[1]));
+	axes.push_back(ga_vec3f_cross(oobb_a._half_vectors[2], oobb_b._half_vectors[2]));
+
+	
+	for (int i = 0; i < axes.size(); i++)
+	{
+		axes[i].normalize();
+
+		float a_proj_len = oobb_a._half_vectors[0].project_onto(axes[i]).mag();
+		a_proj_len += oobb_a._half_vectors[1].project_onto(axes[i]).mag();
+		a_proj_len += oobb_a._half_vectors[2].project_onto(axes[i]).mag();
+
+
+		float b_proj_len = oobb_b._half_vectors[0].project_onto(axes[i]).mag();
+		b_proj_len += oobb_b._half_vectors[1].project_onto(axes[i]).mag();
+		b_proj_len += oobb_b._half_vectors[2].project_onto(axes[i]).mag();
+
+
+		float min_a = axes[i].dot(oobb_a._center) - a_proj_len;
+		float max_a = axes[i].dot(oobb_a._center) + a_proj_len;
+
+		float min_b = axes[i].dot(oobb_b._center) - b_proj_len;
+		float max_b = axes[i].dot(oobb_b._center) + b_proj_len;
+
+		bool overlap = !(min_a > max_b || max_a < min_b);
+
+		if (!overlap)
+		{
+			collision = false;
+			break;
+		}
+
+		float penetration = ga_min((max_b - min_a), (max_a - min_b));
+
+		if (penetration < min_penetration)
+		{
+			min_penetration = penetration;
+			min_penetration_axis = axes[i];
+			min_penetration_index = i;
+		}
+
+	}
+
 
 	if (collision && min_penetration_index < INT_MAX)
 	{

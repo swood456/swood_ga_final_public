@@ -19,6 +19,8 @@
 #include <assert.h>
 #include <ctime>
 
+#include <iostream>
+
 typedef bool (*intersection_func_t)(const ga_shape* a, const ga_mat4f& transform_a, const ga_shape* b, const ga_mat4f& transform_b, ga_collision_info* info);
 
 static intersection_func_t k_dispatch_table[k_shape_count][k_shape_count];
@@ -141,19 +143,28 @@ void ga_physics_world::step_linear_dynamics(ga_frame_params* params, ga_rigid_bo
 		body->_forces.pop_back();
 	}
 
-	// TODO: Homework 5.
-	// Step the linear dynamics portion of the rigid body.
-	// Use fourth-order Runge-Kutta numerical integration.
-	// The rigid body's position (as part of the transform) should be updated to its new location.
-	// The rigid body's velocity should also be updated to its new value.
+	float delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
+
+	ga_vec3f v1 = body->_velocity;
+	ga_vec3f a1 = overall_force.scale_result(1.0f / body->_mass);
+
+	ga_vec3f v2 = body->_velocity + a1.scale_result(0.5f * delta_time);
+	ga_vec3f a2 = overall_force.scale_result(1.0f / body->_mass);
+
+	ga_vec3f v3 = body->_velocity + a2.scale_result(0.5f * delta_time);
+	ga_vec3f a3 = overall_force.scale_result(1.0f / body->_mass);
+
+	ga_vec3f v4 = body->_velocity + a3.scale_result(delta_time);
+	ga_vec3f a4 = overall_force.scale_result(1.0f / body->_mass);
+
+	body->_transform.set_translation( body->_transform.get_translation() + (v1 + v2.scale_result(2.0f) + v3.scale_result(2.0f) + v4).scale_result(delta_time / 6.0f));
+	body->_velocity = body->_velocity + (a1 + a2.scale_result(2.0f) + a3.scale_result(2.0f) + a4).scale_result(delta_time / 6.0f);
+	
 }
 
 void ga_physics_world::step_angular_dynamics(ga_frame_params* params, ga_rigid_body* body)
 {
-	// TODO: Homework 5 BONUS.
-	// Step the angular dynamics portion of the rigid body.
-	// The rigid body's angular momentum, angular velocity, orientation, and transform
-	// should all be updated with new values.
+
 }
 
 void ga_physics_world::resolve_collision(ga_rigid_body* body_a, ga_rigid_body* body_b, ga_collision_info* info)
@@ -181,9 +192,39 @@ void ga_physics_world::resolve_collision(ga_rigid_body* body_a, ga_rigid_body* b
 	// Average the coefficients of restitution.
 	float cor_average = (body_a->_coefficient_of_restitution + body_b->_coefficient_of_restitution) / 2.0f;
 
-	// TODO: Homework 5.
-	// First, calculate the impulse j from the collision of body_a and body_b.
-	// The parameter info contains the collision normal.
-	// The rigid bodies' velocities should then be updated to their new values after the impulse is applied.
+	
+	if ((body_a->_flags & k_static) == 1)
+	{
+		// Handle body a being static
+		float tmp1 = -1.0f * (cor_average + 1) * body_b->_mass * body_b->_velocity.dot(info->_normal);
+
+		ga_vec3f p_hat = info->_normal.scale_result(tmp1);
+
+		body_b->_velocity += (p_hat.scale_result(1.0f / body_b->_mass) * info->_normal);
+	}
+	else if ((body_b->_flags & k_static) == 1)
+	{
+		// Handle body b being static
+		float tmp1 = -1.0f * (cor_average + 1) * body_a->_mass * body_a->_velocity.dot(info->_normal);
+
+		ga_vec3f p_hat = info->_normal.scale_result(tmp1);
+
+		body_a->_velocity += (p_hat.scale_result(1.0f / body_a->_mass) * info->_normal);
+	}
+	else
+	{
+		// Both bodies are not static
+		float tmp1 = (cor_average * 2 + 1) * (body_b->_velocity.dot(info->_normal) - body_a->_velocity.dot(info->_normal));
+		float tmp2 = (1.0f / body_a->_mass) + (1.0f / body_b->_mass);
+
+		ga_vec3f p_hat = info->_normal.scale_result(tmp1 / tmp2);
+
+
+		ga_vec3f a_delta_v = p_hat.scale_result(1.0f / body_a->_mass) * info->_normal;
+		ga_vec3f b_delta_v = p_hat.scale_result(1.0f / body_b->_mass) * info->_normal;
+
+		body_a->_velocity = body_a->_velocity + a_delta_v;
+		body_b->_velocity = body_b->_velocity - b_delta_v;	
+	}
 
 }
