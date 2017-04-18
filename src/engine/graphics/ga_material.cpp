@@ -141,3 +141,59 @@ void ga_constant_color_material::bind(const ga_mat4f& view_proj, const ga_mat4f&
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 }
+
+
+
+ga_phong_color_material::ga_phong_color_material()
+{
+}
+
+ga_phong_color_material::~ga_phong_color_material()
+{
+}
+
+bool ga_phong_color_material::init()
+{
+	std::string source_vs;
+	load_shader("data/shaders/ga_phong_color_vert.glsl", source_vs);
+
+	std::string source_fs;
+	load_shader("data/shaders/ga_phong_color_frag.glsl", source_fs);
+
+	_vs = new ga_shader(source_vs.c_str(), GL_VERTEX_SHADER);
+	if (!_vs->compile())
+	{
+		std::cerr << "Failed to compile vertex shader:" << std::endl << _vs->get_compile_log() << std::endl;
+	}
+
+	_fs = new ga_shader(source_fs.c_str(), GL_FRAGMENT_SHADER);
+	if (!_fs->compile())
+	{
+		std::cerr << "Failed to compile fragment shader:\n\t" << std::endl << _fs->get_compile_log() << std::endl;
+	}
+
+	_program = new ga_program();
+	_program->attach(*_vs);
+	_program->attach(*_fs);
+	if (!_program->link())
+	{
+		std::cerr << "Failed to link shader program:\n\t" << std::endl << _program->get_link_log() << std::endl;
+	}
+
+	return true;
+}
+
+void ga_phong_color_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform)
+{
+	ga_uniform mvp_uniform = _program->get_uniform("u_mvp");
+	ga_uniform color_uniform = _program->get_uniform("u_color");
+
+	_program->use();
+
+	mvp_uniform.set(transform * view_proj);
+	color_uniform.set(_color);
+
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+}

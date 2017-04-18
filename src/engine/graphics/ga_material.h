@@ -74,3 +74,24 @@ private:
 	ga_program* _program;
 	ga_vec3f _color;
 };
+
+class ga_phong_color_material : public ga_material
+{
+public:
+	ga_phong_color_material();
+	~ga_phong_color_material();
+
+	virtual bool init() override;
+
+	virtual void bind(const ga_mat4f& view_proj, const ga_mat4f& transform) override;
+
+	virtual void set_color(const ga_vec3f& color) override { _color = color; }
+
+	// need something to set and store various pieces of phong info
+	//virtual void set_light(const ga_vec3f& meme);
+private:
+	ga_shader* _vs;
+	ga_shader* _fs;
+	ga_program* _program;
+	ga_vec3f _color;
+};
