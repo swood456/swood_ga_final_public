@@ -83,8 +83,11 @@ public:
 
 	virtual void update(struct ga_frame_params* params) override;
 
+	void set_particle_fixed(int i, int j) { get_particle(i, j).set_fixed(true); }
+
 private:
-	void update_draw();
+	void update_draw(struct ga_frame_params* params);
+	ga_vec3f ga_cloth_component::force_between_particles(int i, int j, int k, int l, float spring_k);
 
 	// private accessor
 	ga_cloth_particle& get_particle(uint32_t i, uint32_t j)
@@ -113,26 +116,15 @@ private:
 
 	float _fabric_weight;
 
+	ga_vec3f _gravity;
+	float _dampening;
+
 	// needed for drawing
 	class ga_material* _material;
-	uint32_t _vao;
-	uint32_t _vbos[2];
-	uint32_t _index_count;
 };
 
 // start of cloth.cpp that has to be here or it doesn't work
 #include<iostream>
-
-void ga_cloth_component::update_draw()
-{
-	std::cout << " doing an update for the draw, using subdata" << std::endl;
-	
-	//glGenVertexArrays(1, &_vao);
-
-	int same = 0;
-	same += 1;
-	std::cout << "same: " << same << std::endl;
-}
 ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float sheer_k, float bend_k, uint32_t nx, uint32_t ny,
 	ga_vec3f top_left, ga_vec3f top_right, ga_vec3f bot_left, ga_vec3f bot_right, float fabric_weight) : ga_component(ent)
 {
@@ -154,7 +146,7 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 
 	// set up the mesh of cloth particles
 	_particles = new ga_cloth_particle[nx*ny];
-	
+
 	// this should ideally be changed to use cloth area somehow
 	float mass = fabric_weight / (_nx * _ny);
 	for (int i = 0; i < nx; i++)
@@ -162,9 +154,6 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 		float x = (float)i / (float)(nx - 1);
 		ga_vec3f ab = top_left.scale_result(1.0f - x) + top_right.scale_result(x);
 		ga_vec3f dc = bot_left.scale_result(1.0f - x) + bot_right.scale_result(x);
-
-//		glm::vec3 ab = float(1 - x)*a + float(x)*b;
-		//glm::vec3 dc = float(1 - x)*d + float(x)*c;
 
 		for (int j = 0; j < ny; j++)
 		{
@@ -174,6 +163,7 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 			p.set_original_position(abdc);
 			p.set_position(abdc);
 			p.set_velocity({ 0,0,0 });
+			p.set_acceleration({ 0.0f, 0.0f, 0.0f });
 			p.set_mass(mass);
 			p.set_fixed(false);
 		}
@@ -183,6 +173,14 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 	_material = new ga_constant_color_material();
 	_material->init();
 	_material->set_color({ 0.0f, 0.5f, 1.0f });
+
+	_gravity = { 0.0f, 9.81f, 0.0f };
+
+	_dampening = 0.01f;
+}
+
+void ga_cloth_component::update_draw(struct ga_frame_params* params)
+{
 
 	std::vector<ga_vec3f> verts;
 	std::vector<GLushort> indices;
@@ -208,51 +206,107 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 		}
 	}
 
-	// draw the cloth as a bunch of small triangles
-	_index_count = indices.size();
+	ga_dynamic_drawcall draw;
+	draw._name = "ga_cloth_dynamic";
+	draw._color = { 0.0f, 0.5f, 1.0f };
+	draw._material = _material;
+	draw._positions = verts;
+	draw._indices = indices;
+	draw._transform = get_entity()->get_transform();
+	draw._draw_mode = GL_TRIANGLES;
+	
+	while (params->_dynamic_drawcall_lock.test_and_set(std::memory_order_acquire)) {}
+	params->_dynamic_drawcalls.push_back(draw);
+	params->_dynamic_drawcall_lock.clear(std::memory_order_release);
 
-	glGenVertexArrays(1, &_vao);
-	glBindVertexArray(_vao);
-
-	glGenBuffers(2, _vbos);
-
-	glBindBuffer(GL_ARRAY_BUFFER, _vbos[0]);
-	glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(GLfloat) * 3, &verts[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbos[1]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLushort), &indices[0], GL_STATIC_DRAW);
-
-	glBindVertexArray(0);
 }
+
 
 void ga_cloth_component::update(struct ga_frame_params* params)
 {	
-	ga_vec3f tl_pos = get_particle(0, 0).get_position();
-	tl_pos -= {0.01f, 0.0f, 0.0f};
-	get_particle(0, 0).set_position(tl_pos);
-	//std::cout << "x: " << tl_pos.x << std::endl;
-	update_draw();
+	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
+
+	dt *= 0.1f;
+
+	for (int count = 0; count < 10; count++)
+	{
+
+
+		// update all the cloth position's positions
+		for (int i = 0; i < _nx; i++)
+		{
+			for (int j = 0; j < _ny; j++)
+			{
+				ga_cloth_particle &p = get_particle(i, j);
+
+				if (p.get_fixed())
+				{
+					continue;
+				}
+
+
+				//dt *= 0.1f;
+
+				float p_mass = (float)p.get_mass();
+
+				p.set_position(p.get_position() + p.get_velocity().scale_result(dt));
+
+				p.set_velocity(p.get_velocity() + p.get_acceleration().scale_result(dt));
+
+
+				//gravity
+				ga_vec3f force_vec = _gravity.scale_result(p_mass * -1.0f);
+
+				//structural springs
+				force_vec += force_between_particles(i, j, i - 1, j, _structural_k);
+				force_vec += force_between_particles(i, j, i + 1, j, _structural_k);
+				force_vec += force_between_particles(i, j, i, j - 1, _structural_k);
+				force_vec += force_between_particles(i, j, i, j + 1, _structural_k);
+
+				//shear springs
+				force_vec += force_between_particles(i, j, i - 1, j - 1, _sheer_k);
+				force_vec += force_between_particles(i, j, i + 1, j - 1, _sheer_k);
+				force_vec += force_between_particles(i, j, i - 1, j + 1, _sheer_k);
+				force_vec += force_between_particles(i, j, i + 1, j + 1, _sheer_k);
+
+				//bend springs
+				force_vec += force_between_particles(i, j, i - 2, j, _bend_k);
+				force_vec += force_between_particles(i, j, i + 2, j, _bend_k);
+				force_vec += force_between_particles(i, j, i, j - 2, _bend_k);
+				force_vec += force_between_particles(i, j, i, j + 2, _bend_k);
+
+				//damping
+				force_vec -= p.get_velocity().scale_result(_dampening);
+
+				p.set_acceleration(force_vec.scale_result(1.0f / p.get_mass()));
+
+			}
+		}
+	}
 	
-
-	ga_static_drawcall draw;
-	draw._name = "ga_cloth_component";
-	draw._vao = _vao;
-	draw._index_count = _index_count;
-	draw._transform = get_entity()->get_transform();
-	draw._draw_mode = GL_TRIANGLES;
-	draw._material = _material;
-
-	while (params->_static_drawcall_lock.test_and_set(std::memory_order_acquire)) {}
-	params->_static_drawcalls.push_back(draw);
-	params->_static_drawcall_lock.clear(std::memory_order_release);
-
-	
+	update_draw(params);
 }
 ga_cloth_component::~ga_cloth_component()
 {
 
+}
+
+ga_vec3f ga_cloth_component::force_between_particles(int i, int j, int k, int l, float spring_k) {
+
+	if (k < 0 || k >= _nx || l < 0 || l >= _ny) {
+		return ga_vec3f{ 0.0f, 0.0f, 0.0f };
+	}
+
+	ga_cloth_particle &p1 = get_particle(i, j);
+	ga_cloth_particle &p2 = get_particle(k, l);
+
+	ga_vec3f distance = p2.get_position() - p1.get_position();
+
+	float resting_length = (p2.get_original_position() - p1.get_original_position()).mag();
+
+	ga_vec3f normalized_distance = distance.normal();
+
+	return (distance - (normalized_distance.scale_result(resting_length))).scale_result(spring_k);
 }
 
 // end my mistake placement stuff
@@ -279,92 +333,14 @@ int main(int argc, const char** argv)
 	rotation.make_axis_angle(ga_vec3f::x_vector(), ga_degrees_to_radians(15.0f));
 	camera->rotate(rotation);
 
-	// First text case: A single box with no rotation falling to the floor.
-	ga_entity test_1_box;
-	test_1_box.translate({ -6.0f, 8.0f, 0.0f });
-
-	ga_oobb test_1_oobb;
-	test_1_oobb._half_vectors[0] = ga_vec3f::x_vector();
-	test_1_oobb._half_vectors[1] = ga_vec3f::y_vector();
-	test_1_oobb._half_vectors[2] = ga_vec3f::z_vector();
-
-	ga_physics_component test_1_collider(&test_1_box, &test_1_oobb, 1.0f);
-
-	world->add_rigid_body(test_1_collider.get_rigid_body());
-	sim->add_entity(&test_1_box);
-
 	// cloth stuff
 	ga_entity cloth_ent;
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 1, 1, 1, 3, 3, {-4.0f, 8.0f, 0.0f}, { 2.0f, 8.0f, 0.0f }, { -4.0f, 2.0f, 0.0f }, { 2.0f, 2.0f, 0.0f }, 0.1f);
-	//ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 1.0f);
+	
+	cloth_comp.set_particle_fixed(0, 0);
 
 	sim->add_entity(&cloth_ent);
 
-
-	/*
-	// Second test case: Two boxes with no rotation falling on top of each other.
-	ga_entity test_2_box_1;
-	test_2_box_1.translate({ 0.0f, 4.0f, 0.0f });
-	ga_entity test_2_box_2;
-	test_2_box_2.translate({ 0.0f, 8.0f, 0.0f });
-
-	ga_oobb test_2_oobb_1;
-	test_2_oobb_1._half_vectors[0] = ga_vec3f::x_vector();
-	test_2_oobb_1._half_vectors[1] = ga_vec3f::y_vector();
-	test_2_oobb_1._half_vectors[2] = ga_vec3f::z_vector();
-
-	ga_oobb test_2_oobb_2;
-	test_2_oobb_2._half_vectors[0] = ga_vec3f::x_vector();
-	test_2_oobb_2._half_vectors[1] = ga_vec3f::y_vector();
-	test_2_oobb_2._half_vectors[2] = ga_vec3f::z_vector();
-
-	ga_physics_component test_2_collider_1(&test_2_box_1, &test_2_oobb_1, 3.0f);
-	ga_physics_component test_2_collider_2(&test_2_box_2, &test_2_oobb_2, 1.0f);
-
-	world->add_rigid_body(test_2_collider_1.get_rigid_body());
-	world->add_rigid_body(test_2_collider_2.get_rigid_body());
-	sim->add_entity(&test_2_box_1);
-	sim->add_entity(&test_2_box_2);
-
-	// Third test case: Two weightless boxes colliding off-center.
-	ga_entity test_3_box_1;
-	test_3_box_1.translate({ 5.6f, 4.0f, 0.2f });
-	ga_entity test_3_box_2;
-	test_3_box_2.translate({ 6.5f, 8.0f, 0.0f });
-
-	ga_oobb test_3_oobb_1;
-	test_3_oobb_1._half_vectors[0] = ga_vec3f::x_vector();
-	test_3_oobb_1._half_vectors[1] = ga_vec3f::y_vector().scale_result(0.7f);
-	test_3_oobb_1._half_vectors[2] = ga_vec3f::z_vector().scale_result(0.8f);
-
-	ga_oobb test_3_oobb_2;
-	test_3_oobb_2._half_vectors[0] = ga_vec3f::x_vector().scale_result(0.6f);
-	test_3_oobb_2._half_vectors[1] = ga_vec3f::y_vector().scale_result(0.9f);
-	test_3_oobb_2._half_vectors[2] = ga_vec3f::z_vector().scale_result(0.7f);
-
-	ga_physics_component test_3_collider_1(&test_3_box_1, &test_3_oobb_1, 2.0f);
-	ga_physics_component test_3_collider_2(&test_3_box_2, &test_3_oobb_2, 3.0f);
-	test_3_collider_1.get_rigid_body()->make_weightless();
-	test_3_collider_2.get_rigid_body()->make_weightless();
-
-	test_3_collider_1.get_rigid_body()->add_linear_velocity({ 0.0f, 2.0f, 0.0f });
-	test_3_collider_1.get_rigid_body()->add_angular_momentum({ 0.2f, 0.3f, 0.1f });
-	test_3_collider_2.get_rigid_body()->add_linear_velocity({ 0.0f, -3.0f, 0.0f });
-
-	world->add_rigid_body(test_3_collider_1.get_rigid_body());
-	world->add_rigid_body(test_3_collider_2.get_rigid_body());
-	sim->add_entity(&test_3_box_1);
-	sim->add_entity(&test_3_box_2);
-	*/
-	// We need a floor for the boxes to fall onto.
-	ga_entity floor;
-	ga_plane floor_plane;
-	floor_plane._point = { 0.0f, 0.0f, 0.0f };
-	floor_plane._normal = { 0.0f, 1.0f, 0.0f };
-	ga_physics_component floor_collider(&floor, &floor_plane, 0.0f);
-	floor_collider.get_rigid_body()->make_static();
-	world->add_rigid_body(floor_collider.get_rigid_body());
-	sim->add_entity(&floor);
 
 	// Main loop:
 	while (true)
@@ -394,14 +370,6 @@ int main(int argc, const char** argv)
 		output->update(&params);
 	}
 
-	world->remove_rigid_body(floor_collider.get_rigid_body());
-	/*
-	world->remove_rigid_body(test_3_collider_2.get_rigid_body());
-	world->remove_rigid_body(test_3_collider_1.get_rigid_body());
-	world->remove_rigid_body(test_2_collider_2.get_rigid_body());
-	world->remove_rigid_body(test_2_collider_1.get_rigid_body());
-	*/
-	world->remove_rigid_body(test_1_collider.get_rigid_body());
 
 	delete output;
 	delete world;
