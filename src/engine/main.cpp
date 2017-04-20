@@ -83,10 +83,18 @@ public:
 
 	virtual void update(struct ga_frame_params* params) override;
 
-	void set_particle_fixed(int i, int j) { get_particle(i, j).set_fixed(true); }
+	void set_particle_fixed(int i, int j, ga_vec3f fixed_pos) {
+		get_particle(i, j).set_fixed(true);
+		get_particle(i, j).set_position(fixed_pos);
+	}
 
 private:
+	void update_euler(struct ga_frame_params* params);
+	void update_rk4(struct ga_frame_params* params);
+
 	void update_draw(struct ga_frame_params* params);
+	ga_vec3f force_at_pos(int i, int j, ga_vec3f pos);
+	
 	ga_vec3f ga_cloth_component::force_between_particles(int i, int j, int k, int l, float spring_k);
 
 	// private accessor
@@ -221,17 +229,73 @@ void ga_cloth_component::update_draw(struct ga_frame_params* params)
 
 }
 
+ga_vec3f ga_cloth_component::force_at_pos(int i, int j, ga_vec3f pos)
+{
 
-void ga_cloth_component::update(struct ga_frame_params* params)
-{	
+	return{ 0,0,0 };
+}
+
+void ga_cloth_component::update_rk4(struct ga_frame_params* params)
+{
+	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
+
+	for (int i = 0; i < _nx; i++)
+	{
+		for (int j = 0; j < _ny; j++)
+		{
+			ga_cloth_particle &p = get_particle(i, j);
+
+			if (p.get_fixed())
+			{
+				continue;
+			}
+
+			//dt *= 0.1f;
+
+			float p_mass = (float)p.get_mass();
+
+			p.set_position(p.get_position() + p.get_velocity().scale_result(dt));
+
+			p.set_velocity(p.get_velocity() + p.get_acceleration().scale_result(dt));
+
+
+			//gravity
+			ga_vec3f force_vec = _gravity.scale_result(p_mass * -1.0f);
+
+			//structural springs
+			force_vec += force_between_particles(i, j, i - 1, j, _structural_k);
+			force_vec += force_between_particles(i, j, i + 1, j, _structural_k);
+			force_vec += force_between_particles(i, j, i, j - 1, _structural_k);
+			force_vec += force_between_particles(i, j, i, j + 1, _structural_k);
+
+			//shear springs
+			force_vec += force_between_particles(i, j, i - 1, j - 1, _sheer_k);
+			force_vec += force_between_particles(i, j, i + 1, j - 1, _sheer_k);
+			force_vec += force_between_particles(i, j, i - 1, j + 1, _sheer_k);
+			force_vec += force_between_particles(i, j, i + 1, j + 1, _sheer_k);
+
+			//bend springs
+			force_vec += force_between_particles(i, j, i - 2, j, _bend_k);
+			force_vec += force_between_particles(i, j, i + 2, j, _bend_k);
+			force_vec += force_between_particles(i, j, i, j - 2, _bend_k);
+			force_vec += force_between_particles(i, j, i, j + 2, _bend_k);
+
+			//damping
+			force_vec -= p.get_velocity().scale_result(_dampening);
+
+			p.set_acceleration(force_vec.scale_result(1.0f / p.get_mass()));
+
+		}
+	}
+}
+void ga_cloth_component::update_euler(struct ga_frame_params* params)
+{
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
 
 	dt *= 0.1f;
 
 	for (int count = 0; count < 10; count++)
 	{
-
-
 		// update all the cloth position's positions
 		for (int i = 0; i < _nx; i++)
 		{
@@ -243,7 +307,6 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 				{
 					continue;
 				}
-
 
 				//dt *= 0.1f;
 
@@ -283,6 +346,11 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 			}
 		}
 	}
+}
+
+void ga_cloth_component::update(struct ga_frame_params* params)
+{	
+	update_euler(params);
 	
 	update_draw(params);
 }
@@ -333,14 +401,32 @@ int main(int argc, const char** argv)
 	rotation.make_axis_angle(ga_vec3f::x_vector(), ga_degrees_to_radians(15.0f));
 	camera->rotate(rotation);
 
-	// cloth stuff
-	ga_entity cloth_ent;
-	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 1, 1, 1, 3, 3, {-4.0f, 8.0f, 0.0f}, { 2.0f, 8.0f, 0.0f }, { -4.0f, 2.0f, 0.0f }, { 2.0f, 2.0f, 0.0f }, 0.1f);
+	// simple cloth
 	
-	cloth_comp.set_particle_fixed(0, 0);
+	ga_entity cloth_ent;
+	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 1, 1, 1, 5, 5, {-4.0f, 8.0f, 0.0f}, { 2.0f, 8.0f, 0.0f }, { -4.0f, 2.0f, 0.0f }, { 2.0f, 2.0f, 0.0f }, 0.1f);
+	
+	cloth_comp.set_particle_fixed(0, 0, { -4.0f, 8.0f, 0.0f });
 
 	sim->add_entity(&cloth_ent);
+	
 
+	// silk curtain - does not look nice
+	/*
+	ga_entity silk_curtain_ent;
+	ga_vec3f a = { 0, 8.0f, 0 };
+	ga_vec3f b = { 8.0f, 8.0f, 0 };
+	ga_vec3f c = { 8.0f, 2.0f, 0 };
+	ga_vec3f d = { 0, 2.0f, 0 };
+	ga_cloth_component silk_component = ga_cloth_component(&silk_curtain_ent, 1.0f, 0.1f, 0.01f, 22, 16, a, b, d, c, 0.07f);
+
+	silk_component.set_particle_fixed(0, 0, { 1.6f, 8.0f, 0.1f });
+	silk_component.set_particle_fixed(7, 0, { 4.8f, 8.0f, 0.1f });
+	silk_component.set_particle_fixed(14, 0, { 4.8f, 8.0f, 0.1f });
+	silk_component.set_particle_fixed(21, 0, { 6.4f, 8.0f, 0.1f });
+
+	sim->add_entity(&silk_curtain_ent);
+	*/
 
 	// Main loop:
 	while (true)
