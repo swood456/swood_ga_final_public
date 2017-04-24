@@ -142,7 +142,9 @@ void ga_constant_color_material::bind(const ga_mat4f& view_proj, const ga_mat4f&
 	glDepthMask(GL_TRUE);
 }
 
-
+// ================================
+// phong shader stuff
+// ================================
 
 ga_phong_color_material::ga_phong_color_material()
 {
@@ -183,15 +185,73 @@ bool ga_phong_color_material::init()
 	return true;
 }
 
+void ga_phong_color_material::set_light_info(ga_vec3f light_pos, ga_vec3f ambient, ga_vec3f diffuse, ga_vec3f specular)
+{
+	light_info.Position = light_pos;
+	light_info.La = ambient;
+	light_info.Ld = diffuse;
+	light_info.Ls = specular;
+}
+
+void ga_phong_color_material::set_material_info(ga_vec3f ambient_reflect, ga_vec3f diffuse_reflect, ga_vec3f specular_reflect, float shine)
+{
+	mat_info.Ka = ambient_reflect;
+	mat_info.Kd = diffuse_reflect;
+	mat_info.Ks = specular_reflect;
+	mat_info.Shininess = shine;
+}
+
+void ga_phong_color_material::set_back_material_info(ga_vec3f ambient_reflect, ga_vec3f diffuse_reflect, ga_vec3f specular_reflect, float shine)
+{
+	back_mat_info.Ka = ambient_reflect;
+	back_mat_info.Kd = diffuse_reflect;
+	back_mat_info.Ks = specular_reflect;
+	back_mat_info.Shininess = shine;
+}
+
 void ga_phong_color_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform)
 {
 	ga_uniform mvp_uniform = _program->get_uniform("u_mvp");
-	ga_uniform color_uniform = _program->get_uniform("u_color");
+
+	ga_uniform light_pos_uniform = _program->get_uniform("LightPos");
+	ga_uniform light_amib_uniform = _program->get_uniform("LightAmbient");
+	ga_uniform light_diff_uniform = _program->get_uniform("LightDiffuse");
+	ga_uniform light_spec_uniform = _program->get_uniform("LightSpecular");
+
+	ga_uniform mat_amib_uniform = _program->get_uniform("MaterialAmbient");
+	ga_uniform mat_diff_uniform = _program->get_uniform("MaterialDiffuse");
+	ga_uniform mat_spec_uniform = _program->get_uniform("MaterialSpecular");
+	//ga_uniform mat_shine_uniform = _program->get_uniform("MaterialShininess");
+
+	ga_uniform back_mat_amib_uniform = _program->get_uniform("BackMaterialAmbient");
+	ga_uniform back_mat_diff_uniform = _program->get_uniform("BackMaterialDiffuse");
+	ga_uniform back_mat_spec_uniform = _program->get_uniform("BackMaterialSpecular");
+	
+	//ga_uniform lightInfo_uniform = _program->get_uniform("Light");
+	//ga_uniform materialInfo_uniform = _program->get_uniform("Material");
+
+
+	//ga_uniform mvp_uniform = _program->get_uniform("u_mvp");
+	//ga_uniform color_uniform = _program->get_uniform("u_color");
 
 	_program->use();
 
 	mvp_uniform.set(transform * view_proj);
-	color_uniform.set(_color);
+	light_pos_uniform.set(light_info.Position);
+	light_amib_uniform.set(light_info.La);
+	light_diff_uniform.set(light_info.Ld);
+	light_spec_uniform.set(light_info.Ls);
+
+	mat_amib_uniform.set(mat_info.Ka);
+	mat_diff_uniform.set(mat_info.Kd);
+	mat_spec_uniform.set(mat_info.Ks);
+
+	back_mat_amib_uniform.set(back_mat_info.Ka);
+	back_mat_diff_uniform.set(back_mat_info.Kd);
+	back_mat_spec_uniform.set(back_mat_info.Ks);
+	//mat_shine_uniform.set(mat_info.Shininess);
+	//color_uniform.set(_color);
+	//lightInfo_uniform.set(light_info);
 
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);

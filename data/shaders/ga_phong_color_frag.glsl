@@ -24,24 +24,57 @@ in Data
 
 out vec4 FragColor;
  
-uniform LightInfo Light;
-uniform MaterialInfo Material;
-//uniform sampler2D Tex;
+//uniform LightInfo Light;
+//uniform MaterialInfo Material;
+uniform vec3 LightPos;
+uniform vec3 LightAmbient;
+uniform vec3 LightDiffuse;
+uniform vec3 LightSpecular;
+
+uniform vec3 MaterialAmbient;
+uniform vec3 MaterialDiffuse;
+uniform vec3 MaterialSpecular;
+
+uniform vec3 BackMaterialAmbient;
+uniform vec3 BackMaterialDiffuse;
+uniform vec3 BackMaterialSpecular;
+
+//uniform float MaterialShininess; // put me back please
+
+//uniform sampler2D Tex; // don't need
  
 void light(vec3 position, vec3 norm, out vec3 ambient, out vec3 diffuse, out vec3 spec )
 {
 	vec3 n = normalize( norm );
-	vec3 s = normalize( Light[lightIndex].Position - position );
+	vec3 s = normalize( LightPos - position );
 	vec3 v = normalize( -position );
 	vec3 r = reflect( -s, n );
  
-	ambient = Light.La * Material.Ka;
+	ambient = LightAmbient * MaterialAmbient;
  
 	float sDotN = max( dot( s, n ), 0.0 );
-	diffuse = Light.Ld * Material.Kd * sDotN;
+	diffuse = LightDiffuse * MaterialDiffuse * sDotN;
  
  
-	spec = Light.Ls * Material.Ks * pow( max( dot(r,v) , 0.0 ), Material.Shininess ); 
+	//spec = LightSpecular * MaterialSpecular * pow( max( dot(r,v) , 0.0 ), MaterialShininess ); 
+	spec = LightSpecular * MaterialSpecular * pow( max( dot(r,v) , 0.0 ), 0.1 ); 
+}
+
+void back_light(vec3 position, vec3 norm, out vec3 ambient, out vec3 diffuse, out vec3 spec )
+{
+	vec3 n = normalize( norm );
+	vec3 s = normalize( LightPos - position );
+	vec3 v = normalize( -position );
+	vec3 r = reflect( -s, n );
+ 
+	ambient = LightAmbient * BackMaterialAmbient;
+ 
+	float sDotN = max( dot( s, n ), 0.0 );
+	diffuse = LightDiffuse * BackMaterialDiffuse * sDotN;
+ 
+ 
+	//spec = LightSpecular * BackMaterialSpecular * pow( max( dot(r,v) , 0.0 ), MaterialShininess ); 
+	spec = LightSpecular * BackMaterialSpecular * pow( max( dot(r,v) , 0.0 ), 0.1 ); 
 }
 
 void main()
@@ -51,7 +84,22 @@ void main()
 	vec3 diffuseSum = vec3(0);
 	vec3 specSum = vec3(0);
 	vec3 ambient, diffuse, spec;
- 
+
+	if ( gl_FrontFacing )
+	{
+		light(data.Position, data.Normal, ambient, diffuse, spec );
+		ambientSum = ambient;
+		diffuseSum = diffuse;
+		specSum = spec;
+	} else
+	{
+		back_light(data.Position, data.Normal, ambient, diffuse, spec );
+		ambientSum = ambient;
+		diffuseSum = diffuse;
+		specSum = spec;
+	}
+ /*
+ //code that works but I want back side to be inverse color
 	if ( gl_FrontFacing )
 	{
 		light(data.Position, data.Normal, ambient, diffuse, spec );
@@ -66,9 +114,13 @@ void main()
 		diffuseSum += diffuse;
 		specSum += spec;
 	}
+	*/
 	//ambientSum /= LIGHTCOUNT;
  
 	//vec4 texColor = texture(Tex, data.TexCoord);
  
 	FragColor = vec4( ambientSum + diffuseSum, 1 ) + vec4( specSum, 1 );
+	
+	//FragColor = vec4(data.Normal, 1);
+	
 }

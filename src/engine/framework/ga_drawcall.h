@@ -48,6 +48,7 @@ struct ga_static_drawcall : ga_drawcall
 */
 struct ga_dynamic_drawcall : ga_drawcall
 {
+	std::vector<ga_vec3f> _normals;
 	std::vector<ga_vec3f> _positions;
 	std::vector<ga_vec2f> _texcoords;
 	std::vector<uint16_t> _indices;

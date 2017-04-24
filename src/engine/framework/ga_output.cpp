@@ -121,6 +121,16 @@ void ga_output::draw_dynamic(const std::vector<ga_dynamic_drawcall>& drawcalls, 
 			glEnableVertexAttribArray(1);
 		}
 
+		GLuint norms;
+		if (!d._normals.empty())
+		{
+			glGenBuffers(1, &norms);
+			glBindBuffer(GL_ARRAY_BUFFER, norms);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(ga_vec3f) * d._normals.size(), &d._normals[0], GL_STREAM_DRAW);
+			glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			glEnableVertexAttribArray(2);
+		}
+
 		GLuint indices;
 		glGenBuffers(1, &indices);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices);
@@ -130,10 +140,15 @@ void ga_output::draw_dynamic(const std::vector<ga_dynamic_drawcall>& drawcalls, 
 
 		glDisableVertexAttribArray(0);
 		glDisableVertexAttribArray(1);
+		glDisableVertexAttribArray(2);
 		glDeleteBuffers(1, &indices);
 		if (!d._texcoords.empty())
 		{
 			glDeleteBuffers(1, &texcoord);
+		}
+		if (!d._normals.empty())
+		{
+			glDeleteBuffers(1, &norms);
 		}
 		glDeleteBuffers(1, &pos);
 		glDeleteVertexArrays(1, &vao);

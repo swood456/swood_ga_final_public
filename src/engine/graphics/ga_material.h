@@ -29,6 +29,11 @@ public:
 	virtual void bind(const ga_mat4f& view_proj, const ga_mat4f& transform) = 0;
 
 	virtual void set_color(const ga_vec3f& color) {}
+
+	virtual void set_light_info(ga_vec3f light_pos, ga_vec3f ambient, ga_vec3f diffuse, ga_vec3f specular) {}
+
+	virtual void set_material_info(ga_vec3f ambient_reflect, ga_vec3f diffuse_reflect, ga_vec3f specular_reflect, float shine) {}
+	virtual void set_back_material_info(ga_vec3f ambient_reflect, ga_vec3f diffuse_reflect, ga_vec3f specular_reflect, float shine) {}
 };
 
 /*
@@ -87,9 +92,31 @@ public:
 
 	virtual void set_color(const ga_vec3f& color) override { _color = color; }
 
-	// need something to set and store various pieces of phong info
-	//virtual void set_light(const ga_vec3f& meme);
+	virtual void set_light_info(ga_vec3f light_pos, ga_vec3f ambient, ga_vec3f diffuse, ga_vec3f specular);
+
+	virtual void set_material_info(ga_vec3f ambient_reflect, ga_vec3f diffuse_reflect, ga_vec3f specular_reflect, float shine);
+
+	virtual void set_back_material_info(ga_vec3f ambient_reflect, ga_vec3f diffuse_reflect, ga_vec3f specular_reflect, float shine);
+
 private:
+	struct LightInfo
+	{
+		ga_vec3f Position;	//Light Position in eye-coords
+		ga_vec3f La;		//Ambient light intensity
+		ga_vec3f Ld;		//Diffuse light intensity
+		ga_vec3f Ls;		//Specular light intensity
+	} light_info;
+
+	struct MaterialInfo
+	{
+		ga_vec3f Ka;			//Ambient reflectivity
+		ga_vec3f Kd;			//Diffuse reflectivity
+		ga_vec3f Ks;			//Specular reflectivity
+		float Shininess;		//Specular shininess factor
+	} mat_info;
+
+	struct MaterialInfo back_mat_info;
+
 	ga_shader* _vs;
 	ga_shader* _fs;
 	ga_program* _program;
