@@ -27,6 +27,7 @@
 
 #include "physics/ga_cloth.h"
 #include "graphics\ga_material.h"
+#include "entity/ga_lua_component.h"
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -65,6 +66,29 @@ int main(int argc, const char** argv)
 	rotation.make_axis_angle(ga_vec3f::x_vector(), ga_degrees_to_radians(15.0f));
 	camera->rotate(rotation);
 
+	//lua box
+	ga_entity lua;
+	lua.translate({ 0.0f, 2.0f, 1.0f });
+	ga_lua_component lua_move(&lua, "data/scripts/move.lua");
+	ga_cube_component lua_model(&lua, "data/textures/rpi.png");
+	sim->add_entity(&lua);
+
+	// Make a new cloth entity that will follow the box
+	ga_entity cape_ent;
+	ga_cloth_component cape_cloth(&cape_ent, 2, 1, 1, 6, 12, { -1.0f, 1.0f, 1.1f }, { 1.0f, 1.0f, 1.1f }, { -1.0f, -2.0f, 1.02f }, { 1.0f, -2.0f, 1.02f }, 0.1f);
+	ga_phong_color_material* cape_material = new ga_phong_color_material();
+	cape_material->init();
+	cape_material->set_light_info({ 0,0,0 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
+	cape_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
+	cape_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
+	cape_cloth.set_material(cape_material);
+
+	// fix the cloth to his back
+	cape_cloth.set_particle_fixed_ent(0, 0, &lua, { -1.0f, 1.0f, 1.1f });
+	cape_cloth.set_particle_fixed_ent(5, 0, &lua, { 1.0f, 1.0f, 1.1f });
+	//cape_cloth.set_particle_fixed(0, 0);
+	//cape_cloth.set_particle_fixed(3, 0);
+	sim->add_entity(&cape_ent);
 
 	//////////////////////////////////
 	// simple cloth
@@ -90,7 +114,7 @@ int main(int argc, const char** argv)
 	////////////////////////////////////
 	//med-res tablecloth
 	////////////////////////////////////
-	
+	/*
 	ga_entity cloth_ent;
 	// set up the cloth location and spring constants
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,0.0f,-5.0f },
@@ -112,7 +136,7 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(10, 10, { 2.5, 0, 2.5 });
 
 	sim->add_entity(&cloth_ent);
-	
+	*/
 
 	///////////////////////////////////////////////
 	// FLAG - rubbery and some self-intersection

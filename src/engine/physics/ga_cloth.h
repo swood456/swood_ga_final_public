@@ -17,6 +17,9 @@ public:
 	const ga_vec3f& get_acceleration() const { return _acceleration; }
 	float get_mass() const { return _mass; }
 	bool get_fixed() const { return _is_fixed; }
+	bool get_fixed_to_entity() const { return _is_fixed_to_entity; }
+	ga_entity* get_other_entity() const { return _fixed_to_entity; }
+	ga_vec3f get_offset() const { return _offset; }
 
 	// modifiers
 	void set_original_position(ga_vec3f pos) { _original_position = pos; }
@@ -26,6 +29,12 @@ public:
 	void set_mass(float mass) { _mass = mass; }
 	void set_fixed(bool fixed) { _is_fixed = fixed; }
 
+	void set_fixed_to_other_entity(ga_entity* entity, ga_vec3f offset) {
+		_is_fixed_to_entity = true;
+		_fixed_to_entity = entity;
+		_offset = offset;
+	}
+
 private:
 	ga_vec3f _original_position;
 	ga_vec3f _position;
@@ -33,6 +42,10 @@ private:
 	ga_vec3f _acceleration;
 	float _mass;
 	bool _is_fixed;
+
+	bool _is_fixed_to_entity = false;
+	ga_entity* _fixed_to_entity;
+	ga_vec3f _offset;
 };
 
 class ga_cloth_component : public ga_component
@@ -46,9 +59,16 @@ public:
 
 	virtual void update(struct ga_frame_params* params) override;
 
+	void set_particle_fixed(int i, int j) {
+		get_particle(i, j).set_fixed(true);
+		get_particle(i, j).set_position(get_particle(i,j).get_original_position());
+	}
 	void set_particle_fixed(int i, int j, ga_vec3f fixed_pos) {
 		get_particle(i, j).set_fixed(true);
 		get_particle(i, j).set_position(fixed_pos);
+	}
+	void set_particle_fixed_ent(int i, int j, ga_entity* ent, ga_vec3f offset) {
+		get_particle(i, j).set_fixed_to_other_entity(ent, offset);
 	}
 
 	void set_material(class ga_material* material);

@@ -205,6 +205,13 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 			{
 				ga_cloth_particle &p = get_particle(i, j);
 
+				if (p.get_fixed_to_entity()) {
+					ga_entity* ent = p.get_other_entity();
+					ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
+					p.set_position(updated_pos);
+					continue;
+				}
+
 				if (p.get_fixed())
 				{
 					//pos_row.push_back(p.get_position());
