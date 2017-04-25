@@ -221,18 +221,10 @@ void ga_phong_color_material::bind(const ga_mat4f& view_proj, const ga_mat4f& tr
 	ga_uniform mat_amib_uniform = _program->get_uniform("MaterialAmbient");
 	ga_uniform mat_diff_uniform = _program->get_uniform("MaterialDiffuse");
 	ga_uniform mat_spec_uniform = _program->get_uniform("MaterialSpecular");
-	//ga_uniform mat_shine_uniform = _program->get_uniform("MaterialShininess");
 
 	ga_uniform back_mat_amib_uniform = _program->get_uniform("BackMaterialAmbient");
 	ga_uniform back_mat_diff_uniform = _program->get_uniform("BackMaterialDiffuse");
 	ga_uniform back_mat_spec_uniform = _program->get_uniform("BackMaterialSpecular");
-	
-	//ga_uniform lightInfo_uniform = _program->get_uniform("Light");
-	//ga_uniform materialInfo_uniform = _program->get_uniform("Material");
-
-
-	//ga_uniform mvp_uniform = _program->get_uniform("u_mvp");
-	//ga_uniform color_uniform = _program->get_uniform("u_color");
 
 	_program->use();
 
@@ -249,9 +241,6 @@ void ga_phong_color_material::bind(const ga_mat4f& view_proj, const ga_mat4f& tr
 	back_mat_amib_uniform.set(back_mat_info.Ka);
 	back_mat_diff_uniform.set(back_mat_info.Kd);
 	back_mat_spec_uniform.set(back_mat_info.Ks);
-	//mat_shine_uniform.set(mat_info.Shininess);
-	//color_uniform.set(_color);
-	//lightInfo_uniform.set(light_info);
 
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);

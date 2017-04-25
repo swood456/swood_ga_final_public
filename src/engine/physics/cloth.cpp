@@ -16,14 +16,6 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 	_nx = nx;
 	_ny = ny;
 
-	// locations of the cloth's corners
-	_top_left = top_left;  // a
-	_top_right = top_right;  // b
-	_bot_left = bot_left;  // c
-	_bot_right = bot_right;  // d
-
-	_fabric_weight = fabric_weight;
-
 	// set up the mesh of cloth particles
 	_particles = new ga_cloth_particle[nx*ny];
 
@@ -49,20 +41,17 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 		}
 	}
 
-	_material = new ga_phong_color_material();
-	_material->init();
-
-	_material->set_light_info({ 0,0,0 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
-	_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-	_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-	
-	// lighting that is rather medium
-	//_material->set_light_info({ 0,0,0 }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.1f, 0.1f });
-	//_material->set_material_info({ 1.0f, 0.1f, 0.1f }, { 0.1f, 1.0f, 1.0f }, { 1.0f, 0.1f, 0.1f }, 0.2f);
-
 	_gravity = { 0.0f, 9.81f, 0.0f };
 
-	_dampening = 0.01f;
+//	_dampening = 0.01f;
+	_dampening = 0.008f;
+	//_dampening = 0.005f;
+
+	
+}
+
+void ga_cloth_component::set_material(ga_material* material) {
+	_material = material;
 }
 
 ga_vec3f ga_cloth_component::normal_for_point(int i, int j)
@@ -117,7 +106,6 @@ ga_vec3f ga_cloth_component::normal_for_point(int i, int j)
 
 void ga_cloth_component::update_draw(struct ga_frame_params* params)
 {
-
 	std::vector<ga_vec3f> verts;
 	std::vector<GLushort> indices;
 	std::vector<ga_vec3f> norms;
@@ -144,20 +132,6 @@ void ga_cloth_component::update_draw(struct ga_frame_params* params)
 			norms.push_back(normal_for_point(i, j - 1));
 			norms.push_back(normal_for_point(i - 1, j));
 			norms.push_back(normal_for_point(i, j));
-
-			/*
-			norms.push_back(ga_vec3f_cross(verts[pos] - verts[pos + 2], verts[pos] - verts[pos + 1]).normal());
-			//norms.push_back(ga_vec3f_cross(verts[pos] - verts[pos + 1], verts[pos] - verts[pos + 2]).normal());
-
-			norms.push_back(ga_vec3f_cross(verts[pos + 1] - verts[pos], verts[pos + 1] - verts[pos + 3]).normal());
-			//norms.push_back(ga_vec3f_cross(verts[pos + 1] - verts[pos + 3], verts[pos + 1] - verts[pos]).normal());
-
-			norms.push_back(ga_vec3f_cross(verts[pos + 2] - verts[pos + 3], verts[pos + 2] - verts[pos]).normal());
-			//norms.push_back(ga_vec3f_cross(verts[pos + 2] - verts[pos], verts[pos + 2] - verts[pos + 3]).normal());
-
-			norms.push_back(ga_vec3f_cross(verts[pos + 3] - verts[pos + 1], verts[pos + 3] - verts[pos + 2]).normal());
-			//norms.push_back(ga_vec3f_cross(verts[pos + 3] - verts[pos + 2], verts[pos + 3] - verts[pos + 1]).normal());
-			*/
 		}
 	}
 
@@ -206,9 +180,13 @@ ga_vec3f ga_cloth_component::force_at_pos(int i, int j, ga_vec3f pos)
 
 	force_vec -= p.get_velocity().scale_result(_dampening);
 
+	//ga_vec3f wind_f = { 0.3f, -0.1,0.0f };
+	//force_vec += wind_f.scale_result(wind_f.dot(normal_for_point(i, j)));
+	//force_vec += wind_f;
+
 	return force_vec;
 }
-
+#include<iostream>
 void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 {
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
@@ -216,15 +194,20 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 	int num_iterations_per_frame = 1;
 	dt /= (float)num_iterations_per_frame;
 
-	for (int i = 0; i < num_iterations_per_frame; i++) {
+	for (int k = 0; k < num_iterations_per_frame; k++) {
+
+		//std::vector<std::vector<ga_vec3f>> new_pos;
+
 		for (int i = 0; i < _nx; i++)
 		{
+			//std::vector<ga_vec3f> pos_row;
 			for (int j = 0; j < _ny; j++)
 			{
 				ga_cloth_particle &p = get_particle(i, j);
 
 				if (p.get_fixed())
 				{
+					//pos_row.push_back(p.get_position());
 					continue;
 				}
 				
@@ -247,22 +230,24 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 				ga_vec3f a4 = force_at_pos(i, j, p4).scale_result(1.0f / p_mass);
 
 				p.set_position(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
+				//pos_row.push_back(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
+				
 				p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
-				/*
-				p.set_position(p.get_position() + p.get_velocity().scale_result(dt));
-
-				p.set_velocity(p.get_velocity() + p.get_acceleration().scale_result(dt));
-
-				ga_vec3f force_vec = force_at_pos(i, j, p.get_position());
-
-				//damping
-				force_vec -= p.get_velocity().scale_result(_dampening);
-
-				p.set_acceleration(force_vec.scale_result(1.0f / p.get_mass()));
-				*/
 
 			}
+
+			//new_pos.push_back(pos_row);
 		}
+
+		/*
+		// may need provot corrections for this to work?
+		for (int i = 0; i < _nx; i++) {
+			for (int j = 0; j < _ny; j++) {
+				get_particle(i, j).set_position(new_pos[i][j]);
+			}
+		}
+		*/
+		
 	}
 }
 void ga_cloth_component::update_euler(struct ga_frame_params* params)
@@ -285,14 +270,11 @@ void ga_cloth_component::update_euler(struct ga_frame_params* params)
 					continue;
 				}
 
-				//dt *= 0.1f;
-
 				float p_mass = (float)p.get_mass();
 
 				p.set_position(p.get_position() + p.get_velocity().scale_result(dt));
 
 				p.set_velocity(p.get_velocity() + p.get_acceleration().scale_result(dt));
-
 
 				//gravity
 				ga_vec3f force_vec = _gravity.scale_result(p_mass * -1.0f);
