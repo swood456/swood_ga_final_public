@@ -196,11 +196,9 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 
 	for (int k = 0; k < num_iterations_per_frame; k++) {
 
-		//std::vector<std::vector<ga_vec3f>> new_pos;
-
+		
 		for (int i = 0; i < _nx; i++)
 		{
-			//std::vector<ga_vec3f> pos_row;
 			for (int j = 0; j < _ny; j++)
 			{
 				ga_cloth_particle &p = get_particle(i, j);
@@ -214,7 +212,6 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 
 				if (p.get_fixed())
 				{
-					//pos_row.push_back(p.get_position());
 					continue;
 				}
 				
@@ -237,24 +234,12 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 				ga_vec3f a4 = force_at_pos(i, j, p4).scale_result(1.0f / p_mass);
 
 				p.set_position(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
-				//pos_row.push_back(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
 				
 				p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
 
 			}
 
-			//new_pos.push_back(pos_row);
-		}
-
-		/*
-		// may need provot corrections for this to work?
-		for (int i = 0; i < _nx; i++) {
-			for (int j = 0; j < _ny; j++) {
-				get_particle(i, j).set_position(new_pos[i][j]);
-			}
-		}
-		*/
-		
+		}		
 	}
 }
 void ga_cloth_component::update_euler(struct ga_frame_params* params)
@@ -320,6 +305,62 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 	update_rk4(params);
 
 	update_draw(params);
+
+	// nonsense to allow user to update cloth values
+	// structural
+	if (params->_button_mask & k_button_r) {
+		//increase the structural
+		_structural_k += 0.01f;
+	}
+	if (params->_button_mask & k_button_f) {
+		//increase the structural
+		_structural_k -= 0.01f;
+		if (_structural_k < 0.0f)
+		{
+			_structural_k = 0.0f;
+		}
+	}
+
+	//sheer
+	if (params->_button_mask & k_button_t) {
+		//increase the structural
+		_sheer_k += 0.01f;
+	}
+	if (params->_button_mask & k_button_g) {
+		//increase the structural
+		_sheer_k -= 0.01f;
+		if (_sheer_k < 0.0f)
+		{
+			_sheer_k = 0.0f;
+		}
+	}
+
+	//bend
+	if (params->_button_mask & k_button_y) {
+		//increase the structural
+		_bend_k += 0.01f;
+	}
+	if (params->_button_mask & k_button_h) {
+		//increase the structural
+		_bend_k -= 0.01f;
+		if (_bend_k < 0.0f)
+		{
+			_bend_k = 0.0f;
+		}
+	}
+
+	// reset the cloth positions
+	if (params->_button_mask & k_button_z)
+	{
+		for (int i = 0; i < _nx; i++)
+		{
+			for (int j = 0; j < _ny; j++)
+			{
+				ga_cloth_particle &p = get_particle(i, j);
+				p.set_position(p.get_original_position());
+			}
+		}
+	}
 }
 ga_cloth_component::~ga_cloth_component()
 {

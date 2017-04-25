@@ -29,6 +29,8 @@
 #include "graphics\ga_material.h"
 #include "entity/ga_lua_component.h"
 
+#include "gui/ga_font.h"
+#include "gui/ga_label.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -39,6 +41,8 @@
 #if defined(GA_MINGW)
 #include <unistd.h>
 #endif
+
+ga_font* g_font = nullptr;
 
 static void set_root_path(const char* exepath);
 static void run_unit_tests();
@@ -66,6 +70,13 @@ int main(int argc, const char** argv)
 	rotation.make_axis_angle(ga_vec3f::x_vector(), ga_degrees_to_radians(15.0f));
 	camera->rotate(rotation);
 
+
+	////////// START CLOTHES ///////////////
+
+	////////////////////////////////
+	// BOX WITH A CAPE!
+	////////////////////////////////
+	/*
 	//lua box
 	ga_entity lua;
 	lua.translate({ 0.0f, 2.0f, 1.0f });
@@ -75,20 +86,19 @@ int main(int argc, const char** argv)
 
 	// Make a new cloth entity that will follow the box
 	ga_entity cape_ent;
-	ga_cloth_component cape_cloth(&cape_ent, 2, 1, 1, 6, 12, { -1.0f, 1.0f, 1.1f }, { 1.0f, 1.0f, 1.1f }, { -1.0f, -2.0f, 1.02f }, { 1.0f, -2.0f, 1.02f }, 0.1f);
+	ga_cloth_component cloth_comp(&cape_ent, 2, 1, 1, 6, 12, { -1.0f, 1.0f, 1.1f }, { 1.0f, 1.0f, 1.1f }, { -1.0f, -2.0f, 1.02f }, { 1.0f, -2.0f, 1.02f }, 0.1f);
 	ga_phong_color_material* cape_material = new ga_phong_color_material();
 	cape_material->init();
 	cape_material->set_light_info({ 0,0,0 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
 	cape_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
 	cape_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-	cape_cloth.set_material(cape_material);
+	cloth_comp.set_material(cape_material);
 
 	// fix the cloth to his back
-	cape_cloth.set_particle_fixed_ent(0, 0, &lua, { -1.0f, 1.0f, 1.1f });
-	cape_cloth.set_particle_fixed_ent(5, 0, &lua, { 1.0f, 1.0f, 1.1f });
-	//cape_cloth.set_particle_fixed(0, 0);
-	//cape_cloth.set_particle_fixed(3, 0);
+	cloth_comp.set_particle_fixed_ent(0, 0, &lua, { -1.0f, 1.0f, 1.1f });
+	cloth_comp.set_particle_fixed_ent(5, 0, &lua, { 1.0f, 1.0f, 1.1f });
 	sim->add_entity(&cape_ent);
+	*/
 
 	//////////////////////////////////
 	// simple cloth
@@ -114,7 +124,7 @@ int main(int argc, const char** argv)
 	////////////////////////////////////
 	//med-res tablecloth
 	////////////////////////////////////
-	/*
+	
 	ga_entity cloth_ent;
 	// set up the cloth location and spring constants
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,0.0f,-5.0f },
@@ -136,7 +146,7 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(10, 10, { 2.5, 0, 2.5 });
 
 	sim->add_entity(&cloth_ent);
-	*/
+	
 
 	///////////////////////////////////////////////
 	// FLAG - rubbery and some self-intersection
@@ -165,80 +175,11 @@ int main(int argc, const char** argv)
 	sim->add_entity(&flag_ent);
 	*/
 
-	///////////////////////
-	// HIGH RES tablecloth
-	///////////////////////
-	/*
-	ga_entity cloth_ent;
-	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 3, 0.5, 0.01, 21, 21, { -5.0f,0.0f,-5.0f }, { 5.0f,0.0f,-5.0f }, { -5.0f,0.0f,5.0f }, { 5.0f,0.0f,5.0f }, 0.7f);
+	/////// END CLOTHES /////////////////
 
-	ga_phong_color_material* _material = new ga_phong_color_material();
-	_material->init();
-	_material->set_light_info({ -2.0f, 2, 2.0f }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
-	_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-	_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
 
-	cloth_comp.set_material(_material);
-
-	cloth_comp.set_particle_fixed(5, 5, { -2.5, 0, -2.5 });
-	cloth_comp.set_particle_fixed(5, 15, { -2.5, 0, 2.5 });
-	cloth_comp.set_particle_fixed(15, 5, { 2.5, 0, -2.5 });
-	cloth_comp.set_particle_fixed(15, 15, { 2.5, 0, 2.5 });
-
-	sim->add_entity(&cloth_ent);
-	*/
-	///////////////////////////////////////////////////////////
-	// Hanging Towel - does not look nice because of no self-collision
-	///////////////////////////////////////////////////////////
-	/*
-	ga_entity towel_hanging_ent;
-	ga_cloth_component towel_cloth_comp = ga_cloth_component(&towel_hanging_ent, 0.5, 0.2, 0.1, 11, 11, { -5.0f,5.0f,-5.0f }, { 5.0f,5.0f,-5.0f }, { -5.0f,5.0f,5.0f }, { 5.0f,5.0f,5.0f }, 0.5f);
-	ga_phong_color_material* towel_material = new ga_phong_color_material();
-	towel_material->init();
-	towel_material->set_light_info({ -2.0f, 2, 2.0f }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
-	towel_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-	towel_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-
-	towel_cloth_comp.set_material(towel_material);
-	towel_cloth_comp.set_particle_fixed(5, 0, { 0, 5, -5.0f });
-	
-	sim->add_entity(&towel_hanging_ent);
-	*/
-	/////////////////////////////////////
-	// BIG tablecloth
-	/////////////////////////////////////
-	/*
-	ga_entity cloth_ent;
-	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 1, 1, 21, 21, { 0.0f,0.0f,0.0f }, { 10.0f,0.0f,0.0f }, { 0.0f,0.0f,10.0f }, { 10.0f,0.0f,10.0f }, 0.1f);
-	cloth_comp.set_particle_fixed(5, 5, { 2.5, 0, 2.5 });
-	cloth_comp.set_particle_fixed(5, 15, { 2.5, 0, 7.5 });
-	cloth_comp.set_particle_fixed(15, 5, { 7.5, 0, 2.5 });
-	cloth_comp.set_particle_fixed(15, 15, { 7.5, 0, 7.5 });
-
-	sim->add_entity(&cloth_ent);
-	*/
-	
-
-	////////////////////////////////////////////////////
-	// silk curtain - does not look nice
-	////////////////////////////////////////////////////
-	/*
-	ga_entity silk_curtain_ent;
-	ga_vec3f a = { 0, 8.0f, 0 };
-	ga_vec3f b = { 8.0f, 8.0f, 0 };
-	ga_vec3f c = { 8.0f, 2.0f, 0 };
-	ga_vec3f d = { 0, 2.0f, 0 };
-	ga_cloth_component silk_component = ga_cloth_component(&silk_curtain_ent, 1.0f, 0.1f, 0.01f, 22, 16, a, b, d, c, 0.07f);
-
-	silk_component.set_particle_fixed(0, 0, { 1.6f, 8.0f, 0.1f });
-	silk_component.set_particle_fixed(7, 0, { 4.8f, 8.0f, 0.1f });
-	silk_component.set_particle_fixed(14, 0, { 4.8f, 8.0f, 0.1f });
-	silk_component.set_particle_fixed(21, 0, { 6.4f, 8.0f, 0.1f });
-
-	sim->add_entity(&silk_curtain_ent);
-	*/
-
-	//// END ADDING CLOTHES ////////////////////////////
+	// Create the default font:
+	g_font = new ga_font("VeraMono.ttf", 16.0f, 512, 512);
 
 	// Main loop:
 	while (true)
@@ -263,6 +204,16 @@ int main(int argc, const char** argv)
 
 		// Perform the late update.
 		sim->late_update(&params);
+
+		//gui stuff
+		float cloth_structural = cloth_comp.get_k_structural();
+		ga_label(("structural: " + std::to_string(cloth_structural)).c_str(), 20.0f, 20.0f, &params);
+
+		float cloth_sheer = cloth_comp.get_k_sheer();
+		ga_label(("sheer: " + std::to_string(cloth_sheer)).c_str(), 20.0f, 35.0f, &params);
+
+		float cloth_bend = cloth_comp.get_k_bend();
+		ga_label(("bend: " + std::to_string(cloth_bend)).c_str(), 20.0f, 50.0f, &params);
 
 		// Draw to screen.
 		output->update(&params);

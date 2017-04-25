@@ -73,6 +73,10 @@ public:
 
 	void set_material(class ga_material* material);
 
+	float get_k_structural() const { return _structural_k; }
+	float get_k_sheer() const { return _sheer_k; }
+	float get_k_bend() const { return _bend_k; }
+	
 private:
 	void update_euler(struct ga_frame_params* params);
 	void update_rk4(struct ga_frame_params* params);
