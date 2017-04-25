@@ -45,7 +45,6 @@
 ga_font* g_font = nullptr;
 
 static void set_root_path(const char* exepath);
-static void run_unit_tests();
 
 
 int main(int argc, const char** argv)
@@ -53,8 +52,6 @@ int main(int argc, const char** argv)
 	set_root_path(argv[0]);
 
 	ga_job::startup(0xffff, 256, 256);
-
-	run_unit_tests();
 
 	// Create objects for three phases of the frame: input, sim and output.
 	ga_input* input = new ga_input();
@@ -100,35 +97,14 @@ int main(int argc, const char** argv)
 	sim->add_entity(&cape_ent);
 	*/
 
-	//////////////////////////////////
-	// simple cloth
-	//////////////////////////////////
-	/*
-	ga_entity cloth_ent;
-	
-	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 1, 0.1f, 0.1f, 8, 8, { -4.0f, 8.0f, 0.0f }, { 2.0f, 8.0f, 0.0f }, { -4.0f, 2.0f, 0.0f }, { 2.0f, 2.0f, 0.0f }, 0.1f);
-	
-	ga_phong_color_material* _material = new ga_phong_color_material();
-	_material->init();
-	_material->set_light_info({ 0,0,0 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
-	_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-	_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
-
-	cloth_comp.set_material(_material);
-
-	cloth_comp.set_particle_fixed(0, 0, { -4.0f, 8.0f, -2.0f });
-
-	sim->add_entity(&cloth_ent);
-	*/
-
 	////////////////////////////////////
-	//med-res tablecloth
+	// tablecloth
 	////////////////////////////////////
-	
+
 	ga_entity cloth_ent;
 	// set up the cloth location and spring constants
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,0.0f,-5.0f },
-		{ 5.0f,0.0f,-5.0f }, { -5.0f,0.0f,5.0f }, { 5.0f,0.0f,5.0f }, 0.5f);
+	{ 5.0f,0.0f,-5.0f }, { -5.0f,0.0f,5.0f }, { 5.0f,0.0f,5.0f }, 0.5f);
 
 	// set up lighting and material color
 	ga_phong_color_material* _material = new ga_phong_color_material();
@@ -146,7 +122,27 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(10, 10, { 2.5, 0, 2.5 });
 
 	sim->add_entity(&cloth_ent);
+
+	///////////////////////////////////////////
+	// simple cloth, mainly for initial testing
+	///////////////////////////////////////////
+	/*
+	ga_entity cloth_ent;
 	
+	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 1, 0.1f, 0.1f, 8, 8, { -4.0f, 8.0f, 0.0f }, { 2.0f, 8.0f, 0.0f }, { -4.0f, 2.0f, 0.0f }, { 2.0f, 2.0f, 0.0f }, 0.1f);
+	
+	ga_phong_color_material* _material = new ga_phong_color_material();
+	_material->init();
+	_material->set_light_info({ 0,0,0 }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
+	_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
+	_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f,0.3f,0.3f }, { 0,0,0 }, 0.2f);
+
+	cloth_comp.set_material(_material);
+
+	cloth_comp.set_particle_fixed(0, 0, { -4.0f, 8.0f, -2.0f });
+
+	sim->add_entity(&cloth_ent);
+	*/
 
 	///////////////////////////////////////////////
 	// FLAG - rubbery and some self-intersection
@@ -205,7 +201,7 @@ int main(int argc, const char** argv)
 		// Perform the late update.
 		sim->late_update(&params);
 
-		//gui stuff
+		//gui
 		float cloth_structural = cloth_comp.get_k_structural();
 		ga_label(("structural: " + std::to_string(cloth_structural)).c_str(), 20.0f, 20.0f, &params);
 
@@ -256,11 +252,4 @@ static void set_root_path(const char* exepath)
 	g_root_path[strlen(cwd)] = '/';
 	g_root_path[strlen(cwd) + 1] = '\0';
 #endif
-}
-
-void run_unit_tests()
-{
-	// currently no plans for unit tests
-	//ga_intersection_utility_unit_tests();
-	//ga_intersection_unit_tests();
 }

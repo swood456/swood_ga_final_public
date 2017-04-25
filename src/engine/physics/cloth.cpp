@@ -43,10 +43,7 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 
 	_gravity = { 0.0f, 9.81f, 0.0f };
 
-//	_dampening = 0.01f;
 	_dampening = 0.008f;
-	//_dampening = 0.005f;
-
 	
 }
 
@@ -180,10 +177,6 @@ ga_vec3f ga_cloth_component::force_at_pos(int i, int j, ga_vec3f pos)
 
 	force_vec -= p.get_velocity().scale_result(_dampening);
 
-	//ga_vec3f wind_f = { 0.3f, -0.1,0.0f };
-	//force_vec += wind_f.scale_result(wind_f.dot(normal_for_point(i, j)));
-	//force_vec += wind_f;
-
 	return force_vec;
 }
 #include<iostream>
@@ -191,56 +184,47 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 {
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
 
-	int num_iterations_per_frame = 1;
-	dt /= (float)num_iterations_per_frame;
-
-	for (int k = 0; k < num_iterations_per_frame; k++) {
-
-		
-		for (int i = 0; i < _nx; i++)
+	for (int i = 0; i < _nx; i++)
+	{
+		for (int j = 0; j < _ny; j++)
 		{
-			for (int j = 0; j < _ny; j++)
-			{
-				ga_cloth_particle &p = get_particle(i, j);
+			ga_cloth_particle &p = get_particle(i, j);
 
-				if (p.get_fixed_to_entity()) {
-					ga_entity* ent = p.get_other_entity();
-					ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
-					p.set_position(updated_pos);
-					continue;
-				}
-
-				if (p.get_fixed())
-				{
-					continue;
-				}
-				
-				float p_mass = p.get_mass();
-
-				ga_vec3f p1 = p.get_position();
-				ga_vec3f v1 = p.get_velocity();
-				ga_vec3f a1 = force_at_pos(i, j, p1).scale_result(1.0f/ p_mass);
-
-				ga_vec3f p2 = p1 + v1.scale_result(0.5f * dt);
-				ga_vec3f v2 = v1 + a1.scale_result(0.5f * dt);
-				ga_vec3f a2 = force_at_pos(i, j, p2).scale_result(1.0f / p_mass);
-
-				ga_vec3f p3 = p1 + v2.scale_result(0.5f * dt);
-				ga_vec3f v3 = v1 + a2.scale_result(0.5f * dt);
-				ga_vec3f a3 = force_at_pos(i, j, p3).scale_result(1.0f / p_mass);
-
-				ga_vec3f p4 = p1 + v3.scale_result(dt);
-				ga_vec3f v4 = v1 + a3.scale_result(dt);
-				ga_vec3f a4 = force_at_pos(i, j, p4).scale_result(1.0f / p_mass);
-
-				p.set_position(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
-				
-				p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
-
+			if (p.get_fixed_to_entity()) {
+				ga_entity* ent = p.get_other_entity();
+				ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
+				p.set_position(updated_pos);
+				continue;
 			}
 
-		}		
-	}
+			if (p.get_fixed())
+			{
+				continue;
+			}
+				
+			float p_mass = p.get_mass();
+
+			ga_vec3f p1 = p.get_position();
+			ga_vec3f v1 = p.get_velocity();
+			ga_vec3f a1 = force_at_pos(i, j, p1).scale_result(1.0f/ p_mass);
+
+			ga_vec3f p2 = p1 + v1.scale_result(0.5f * dt);
+			ga_vec3f v2 = v1 + a1.scale_result(0.5f * dt);
+			ga_vec3f a2 = force_at_pos(i, j, p2).scale_result(1.0f / p_mass);
+
+			ga_vec3f p3 = p1 + v2.scale_result(0.5f * dt);
+			ga_vec3f v3 = v1 + a2.scale_result(0.5f * dt);
+			ga_vec3f a3 = force_at_pos(i, j, p3).scale_result(1.0f / p_mass);
+
+			ga_vec3f p4 = p1 + v3.scale_result(dt);
+			ga_vec3f v4 = v1 + a3.scale_result(dt);
+			ga_vec3f a4 = force_at_pos(i, j, p4).scale_result(1.0f / p_mass);
+
+			p.set_position(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
+				
+			p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
+		}
+	}		
 }
 void ga_cloth_component::update_euler(struct ga_frame_params* params)
 {
@@ -306,7 +290,8 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 
 	update_draw(params);
 
-	// nonsense to allow user to update cloth values
+	//allow user to update cloth values
+
 	// structural
 	if (params->_button_mask & k_button_r) {
 		//increase the structural
