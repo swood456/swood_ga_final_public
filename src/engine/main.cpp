@@ -71,7 +71,7 @@ int main(int argc, const char** argv)
 	////////// START CLOTHES ///////////////
 
 	////////////////////////////////
-	// BOX WITH A CAPE!
+	// BOX WITH A CAPE
 	////////////////////////////////
 	/*
 	//lua box
@@ -100,7 +100,7 @@ int main(int argc, const char** argv)
 	////////////////////////////////////
 	// tablecloth
 	////////////////////////////////////
-
+	
 	ga_entity cloth_ent;
 	// set up the cloth location and spring constants
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,0.0f,-5.0f },
@@ -116,10 +116,10 @@ int main(int argc, const char** argv)
 	cloth_comp.set_material(_material);
 
 	// set pats of the cloth to be fixed
-	cloth_comp.set_particle_fixed(4, 4, { -2.5, 0, -2.5 });
-	cloth_comp.set_particle_fixed(4, 10, { -2.5, 0, 2.5 });
-	cloth_comp.set_particle_fixed(10, 4, { 2.5, 0, -2.5 });
-	cloth_comp.set_particle_fixed(10, 10, { 2.5, 0, 2.5 });
+	cloth_comp.set_particle_fixed(4, 4);
+	cloth_comp.set_particle_fixed(4, 10);
+	cloth_comp.set_particle_fixed(10, 4);
+	cloth_comp.set_particle_fixed(10, 10);
 
 	sim->add_entity(&cloth_ent);
 
@@ -139,7 +139,7 @@ int main(int argc, const char** argv)
 
 	cloth_comp.set_material(_material);
 
-	cloth_comp.set_particle_fixed(0, 0, { -4.0f, 8.0f, -2.0f });
+	cloth_comp.set_particle_fixed(0, 0,);
 
 	sim->add_entity(&cloth_ent);
 	*/

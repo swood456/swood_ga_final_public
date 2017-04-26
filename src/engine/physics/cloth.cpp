@@ -246,6 +246,13 @@ void ga_cloth_component::update_euler(struct ga_frame_params* params)
 					continue;
 				}
 
+				if (p.get_fixed_to_entity()) {
+					ga_entity* ent = p.get_other_entity();
+					ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
+					p.set_position(updated_pos);
+					continue;
+				}
+
 				float p_mass = (float)p.get_mass();
 
 				p.set_position(p.get_position() + p.get_velocity().scale_result(dt));
@@ -343,6 +350,7 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 			{
 				ga_cloth_particle &p = get_particle(i, j);
 				p.set_position(p.get_original_position());
+				p.set_velocity({ 0,0,0 });
 			}
 		}
 	}
