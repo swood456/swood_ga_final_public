@@ -98,7 +98,7 @@ int main(int argc, const char** argv)
 	*/
 
 	////////////////////////////////////
-	// tablecloth
+	// tablecloth - serial
 	////////////////////////////////////
 	
 	ga_entity cloth_ent;
@@ -122,7 +122,38 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(10, 10);
 
 	sim->add_entity(&cloth_ent);
+	
 
+	//////////////////////////////////////////
+	// super parallelized table cloth
+	//////////////////////////////////////////
+	/*
+	ga_entity cloth_ent;
+	int n = 19;
+	// set up the cloth location and spring constants
+	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, n, n, { -5.0f,0.0f,-5.0f },
+	{ 5.0f,0.0f,-5.0f }, { -5.0f,0.0f,5.0f }, { 5.0f,0.0f,5.0f }, 0.5f);
+
+	// set up lighting and material color
+	ga_phong_color_material* _material = new ga_phong_color_material();
+	_material->init();
+	_material->set_light_info({ -2.0f, 2, 2.0f }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
+	_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.5f, 0.5f, 0.5f }, { 0, 0, 0 }, 0.2f);
+	_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f, 0.3f, 0.3f }, { 0, 0, 0 }, 0.2f);
+
+	cloth_comp.set_material(_material);
+
+	// set pats of the cloth to be fixed
+	int num_spots_from_edge = 5;
+	cloth_comp.set_particle_fixed(num_spots_from_edge, num_spots_from_edge);
+	cloth_comp.set_particle_fixed(num_spots_from_edge, n - num_spots_from_edge - 1);
+	cloth_comp.set_particle_fixed(n - num_spots_from_edge - 1, num_spots_from_edge);
+	cloth_comp.set_particle_fixed(n - num_spots_from_edge - 1, n - num_spots_from_edge - 1);
+
+	cloth_comp.set_num_parallel_iters(3);
+
+	sim->add_entity(&cloth_ent);
+	*/
 	///////////////////////////////////////////
 	// simple cloth, mainly for initial testing
 	///////////////////////////////////////////
@@ -150,7 +181,7 @@ int main(int argc, const char** argv)
 	/*
 	ga_entity flag_ent;
 	// set up the cloth location and spring constants
-	ga_cloth_component flag_cloth = ga_cloth_component(&flag_ent, 1, 0.3, 0.3, 15, 15, { -7.5f,5.0f,-5.0f },
+	ga_cloth_component cloth_comp = ga_cloth_component(&flag_ent, 1, 0.3, 0.3, 15, 15, { -7.5f,5.0f,-5.0f },
 	{ 10.0f,5.0f,-5.0f }, { -7.50f,-5.0f,-5.0f }, { 10.0f,-5.0f,-5.0f }, 0.5f);
 
 	// set up lighting and material color
@@ -160,13 +191,13 @@ int main(int argc, const char** argv)
 	flag_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.5f, 0.5f, 0.5f }, { 0, 0, 0 }, 0.2f);
 	flag_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f, 0.3f, 0.3f }, { 0, 0, 0 }, 0.2f);
 
-	flag_cloth.set_material(flag_material);
+	cloth_comp.set_material(flag_material);
 
 	// set pats of the cloth to be fixed
-	flag_cloth.set_particle_fixed(0, 0, { -7.5f,5.0f,-4.0f });
-	flag_cloth.set_particle_fixed(0, 14, { -7.50f,-5.0f,-4.0f });
-	flag_cloth.set_particle_fixed(0, 4, { -7.50f,2.14f,-4.0f });
-	flag_cloth.set_particle_fixed(0, 9, { -7.50f,-1.428f,-4.0f });
+	cloth_comp.set_particle_fixed(0, 0, { -7.5f,5.0f,-4.0f });
+	cloth_comp.set_particle_fixed(0, 14, { -7.50f,-5.0f,-4.0f });
+	cloth_comp.set_particle_fixed(0, 4, { -7.50f,2.14f,-4.0f });
+	cloth_comp.set_particle_fixed(0, 9, { -7.50f,-1.428f,-4.0f });
 
 	sim->add_entity(&flag_ent);
 	*/
@@ -203,13 +234,16 @@ int main(int argc, const char** argv)
 
 		//gui
 		float cloth_structural = cloth_comp.get_k_structural();
-		ga_label(("structural: " + std::to_string(cloth_structural)).c_str(), 20.0f, 20.0f, &params);
+		ga_label(("structural: " + std::to_string(cloth_structural)).c_str(), 20.0f, 35.0f, &params);
 
 		float cloth_sheer = cloth_comp.get_k_sheer();
-		ga_label(("sheer: " + std::to_string(cloth_sheer)).c_str(), 20.0f, 35.0f, &params);
+		ga_label(("sheer: " + std::to_string(cloth_sheer)).c_str(), 20.0f, 50.0f, &params);
 
 		float cloth_bend = cloth_comp.get_k_bend();
-		ga_label(("bend: " + std::to_string(cloth_bend)).c_str(), 20.0f, 50.0f, &params);
+		ga_label(("bend: " + std::to_string(cloth_bend)).c_str(), 20.0f, 65.0f, &params);
+
+		float fps = 1.0f / std::chrono::duration_cast<std::chrono::duration<float>>(params._delta_time).count();
+		ga_label(("fps: " + std::to_string(fps)).c_str(), 20.0f, 20.0f, &params);
 
 		// Draw to screen.
 		output->update(&params);

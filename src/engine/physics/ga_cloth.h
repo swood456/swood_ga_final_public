@@ -77,6 +77,10 @@ public:
 	float get_k_sheer() const { return _sheer_k; }
 	float get_k_bend() const { return _bend_k; }
 	
+	void update_rk4_row(struct ga_frame_params* params, uint32_t row);
+
+	void set_num_parallel_iters(int n) { _num_parallel_iters = n; }
+
 private:
 	void update_euler(struct ga_frame_params* params);
 	void update_rk4(struct ga_frame_params* params);
@@ -112,4 +116,6 @@ private:
 
 	// needed for drawing
 	class ga_material* _material;
+
+	int _num_parallel_iters;
 };
