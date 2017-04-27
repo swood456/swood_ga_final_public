@@ -70,9 +70,9 @@ int main(int argc, const char** argv)
 
 	////////// START CLOTHES ///////////////
 
-	////////////////////////////////
-	// BOX WITH A CAPE
-	////////////////////////////////
+	////////////////////////////////////
+	// Box with cape, velocity verlet
+	////////////////////////////////////
 	/*
 	//lua box
 	ga_entity lua;
@@ -94,13 +94,17 @@ int main(int argc, const char** argv)
 	// fix the cloth to his back
 	cloth_comp.set_particle_fixed_ent(0, 0, &lua, { -1.0f, 1.0f, 1.1f });
 	cloth_comp.set_particle_fixed_ent(5, 0, &lua, { 1.0f, 1.0f, 1.1f });
+
+	cloth_comp.set_integration_type(Velocity_verlet);
+	cloth_comp.set_num_iterations(5);
+
 	sim->add_entity(&cape_ent);
 	*/
 
 	////////////////////////////////////
-	// tablecloth - serial
+	// tablecloth - serial rk4
 	////////////////////////////////////
-	/*
+	
 	ga_entity cloth_ent;
 	// set up the cloth location and spring constants
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,0.0f,-5.0f },
@@ -121,13 +125,18 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(10, 4);
 	cloth_comp.set_particle_fixed(10, 10);
 
+	cloth_comp.set_integration_type(RK4_serial);
+	cloth_comp.set_num_iterations(1);
+
 	sim->add_entity(&cloth_ent);
-	*/
+	
 
 	//////////////////////////////////////////
-	// super parallelized table cloth
+	// super parallelized table cloth, rk4
 	//////////////////////////////////////////
-	
+
+	//NOTE: only run on release for this large size
+	/*
 	ga_entity cloth_ent;
 	int n = 81;
 	// set up the cloth location and spring constants
@@ -150,10 +159,11 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(n - num_spots_from_edge - 1, num_spots_from_edge);
 	cloth_comp.set_particle_fixed(n - num_spots_from_edge - 1, n - num_spots_from_edge - 1);
 
-	cloth_comp.set_num_parallel_iters(3);
+	cloth_comp.set_num_iterations(3);
+	cloth_comp.set_integration_type(RK4_parallel);
 
 	sim->add_entity(&cloth_ent);
-	
+	*/
 	///////////////////////////////////////////
 	// simple cloth, mainly for initial testing
 	///////////////////////////////////////////
@@ -170,7 +180,10 @@ int main(int argc, const char** argv)
 
 	cloth_comp.set_material(_material);
 
-	cloth_comp.set_particle_fixed(0, 0,);
+	cloth_comp.set_particle_fixed(0, 0);
+
+	cloth_comp.set_integration_type(Euler);
+	cloth_comp.set_num_iterations(16);
 
 	sim->add_entity(&cloth_ent);
 	*/
@@ -194,10 +207,13 @@ int main(int argc, const char** argv)
 	cloth_comp.set_material(flag_material);
 
 	// set pats of the cloth to be fixed
-	cloth_comp.set_particle_fixed(0, 0, { -7.5f,5.0f,-4.0f });
-	cloth_comp.set_particle_fixed(0, 14, { -7.50f,-5.0f,-4.0f });
-	cloth_comp.set_particle_fixed(0, 4, { -7.50f,2.14f,-4.0f });
-	cloth_comp.set_particle_fixed(0, 9, { -7.50f,-1.428f,-4.0f });
+	cloth_comp.set_particle_fixed(0, 0);
+	cloth_comp.set_particle_fixed(0, 14);
+	cloth_comp.set_particle_fixed(0, 4);
+	cloth_comp.set_particle_fixed(0, 9);
+
+	cloth_comp.set_integration_type(RK4_serial);
+	cloth_comp.set_num_iterations(1);
 
 	sim->add_entity(&flag_ent);
 	*/

@@ -7,6 +7,14 @@
 
 class ga_material;
 
+enum IntegrationType
+{
+	Euler,
+	RK4_serial,
+	RK4_parallel,
+	Velocity_verlet
+};
+
 class ga_cloth_particle
 {
 public:
@@ -79,11 +87,15 @@ public:
 	
 	void update_rk4_row(struct ga_frame_params* params, uint32_t row);
 
-	void set_num_parallel_iters(int n) { _num_parallel_iters = n; }
+	void set_num_iterations(int n) { _num_iterations = n; }
+
+	void set_integration_type(IntegrationType type) { _integration_type = type; }
 
 private:
+	IntegrationType _integration_type;
 	void update_euler(struct ga_frame_params* params);
 	void update_rk4(struct ga_frame_params* params);
+	void update_velocity_verlet(struct ga_frame_params* params);
 
 	void update_draw(struct ga_frame_params* params);
 	ga_vec3f force_at_pos(int i, int j, ga_vec3f pos);
@@ -117,5 +129,5 @@ private:
 	// needed for drawing
 	class ga_material* _material;
 
-	int _num_parallel_iters;
+	int _num_iterations;
 };

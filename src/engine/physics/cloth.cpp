@@ -47,7 +47,7 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 
 	_dampening = 0.008f;
 
-	_num_parallel_iters = 0;
+	_num_iterations = 1;
 	
 }
 
@@ -186,55 +186,58 @@ ga_vec3f ga_cloth_component::force_at_pos(int i, int j, ga_vec3f pos)
 
 void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 {
-	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
+	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count() / _num_iterations;
 
-	for (int i = 0; i < _nx; i++)
+	for (int k = 0; k < _num_iterations; k++)
 	{
-		for (int j = 0; j < _ny; j++)
+		for (int i = 0; i < _nx; i++)
 		{
-			ga_cloth_particle &p = get_particle(i, j);
-
-			if (p.get_fixed_to_entity()) {
-				ga_entity* ent = p.get_other_entity();
-				ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
-				p.set_position(updated_pos);
-				continue;
-			}
-
-			if (p.get_fixed())
+			for (int j = 0; j < _ny; j++)
 			{
-				continue;
+				ga_cloth_particle &p = get_particle(i, j);
+
+				if (p.get_fixed_to_entity()) {
+					ga_entity* ent = p.get_other_entity();
+					ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
+					p.set_position(updated_pos);
+					continue;
+				}
+
+				if (p.get_fixed())
+				{
+					continue;
+				}
+
+				float p_mass = p.get_mass();
+
+				ga_vec3f p1 = p.get_position();
+				ga_vec3f v1 = p.get_velocity();
+				ga_vec3f a1 = force_at_pos(i, j, p1).scale_result(1.0f / p_mass);
+
+				ga_vec3f p2 = p1 + v1.scale_result(0.5f * dt);
+				ga_vec3f v2 = v1 + a1.scale_result(0.5f * dt);
+				ga_vec3f a2 = force_at_pos(i, j, p2).scale_result(1.0f / p_mass);
+
+				ga_vec3f p3 = p1 + v2.scale_result(0.5f * dt);
+				ga_vec3f v3 = v1 + a2.scale_result(0.5f * dt);
+				ga_vec3f a3 = force_at_pos(i, j, p3).scale_result(1.0f / p_mass);
+
+				ga_vec3f p4 = p1 + v3.scale_result(dt);
+				ga_vec3f v4 = v1 + a3.scale_result(dt);
+				ga_vec3f a4 = force_at_pos(i, j, p4).scale_result(1.0f / p_mass);
+
+				p.set_position(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
+
+				p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
 			}
-				
-			float p_mass = p.get_mass();
-
-			ga_vec3f p1 = p.get_position();
-			ga_vec3f v1 = p.get_velocity();
-			ga_vec3f a1 = force_at_pos(i, j, p1).scale_result(1.0f/ p_mass);
-
-			ga_vec3f p2 = p1 + v1.scale_result(0.5f * dt);
-			ga_vec3f v2 = v1 + a1.scale_result(0.5f * dt);
-			ga_vec3f a2 = force_at_pos(i, j, p2).scale_result(1.0f / p_mass);
-
-			ga_vec3f p3 = p1 + v2.scale_result(0.5f * dt);
-			ga_vec3f v3 = v1 + a2.scale_result(0.5f * dt);
-			ga_vec3f a3 = force_at_pos(i, j, p3).scale_result(1.0f / p_mass);
-
-			ga_vec3f p4 = p1 + v3.scale_result(dt);
-			ga_vec3f v4 = v1 + a3.scale_result(dt);
-			ga_vec3f a4 = force_at_pos(i, j, p4).scale_result(1.0f / p_mass);
-
-			p.set_position(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
-				
-			p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
 		}
-	}		
+	}
 }
 
 void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t row) {
 	
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
-	dt /= _num_parallel_iters;
+	dt /= _num_iterations;
 
 	for (int i = 0; i < _nx; i++)
 	{
@@ -280,10 +283,9 @@ void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t
 void ga_cloth_component::update_euler(struct ga_frame_params* params)
 {
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
-	int num_euler = 20;
-	dt /= num_euler;
+	dt /= _num_iterations;
 
-	for (int count = 0; count < num_euler; count++)
+	for (int count = 0; count < _num_iterations; count++)
 	{
 		// update all the cloth position's positions
 		for (int i = 0; i < _nx; i++)
@@ -341,13 +343,73 @@ void ga_cloth_component::update_euler(struct ga_frame_params* params)
 	}
 }
 
+void ga_cloth_component::update_velocity_verlet(struct ga_frame_params* params)
+{
+	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
+	dt /= _num_iterations;
+
+	for (int k = 0; k < _num_iterations; k++)
+	{
+		for (int i = 0; i < _nx; i++)
+		{
+			for (int j = 0; j < _ny; j++)
+			{
+				ga_cloth_particle &p = get_particle(i, j);
+
+				if (p.get_fixed_to_entity()) {
+					ga_entity* ent = p.get_other_entity();
+					ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
+					p.set_position(updated_pos);
+					continue;
+				}
+
+				if (p.get_fixed())
+				{
+					continue;
+				}
+
+				float p_mass = p.get_mass();
+				/*
+				// verlet integration without half-step velocity
+				ga_vec3f at = p.get_acceleration();
+				ga_vec3f vt = p.get_velocity();
+
+				p.set_position(p.get_position() + p.get_velocity().scale_result(dt) + p.get_acceleration().scale_result(0.5f * dt * dt));
+
+				ga_vec3f at_t = force_at_pos(i, j, p.get_position()).scale_result(1.0f / p.get_mass());
+
+				p.set_acceleration(at_t);
+
+				p.set_velocity(vt + (at + at_t).scale_result(0.5f * dt));
+				*/
+
+				// verlet integration with half-step velocity
+				ga_vec3f v_t_half_dt = p.get_velocity() + p.get_acceleration().scale_result(0.5f * dt);
+				ga_vec3f x_t_dt = p.get_position() + v_t_half_dt.scale_result(dt);
+				ga_vec3f a_t_dt = force_at_pos(i, j, x_t_dt).scale_result(1.0f / p.get_mass());
+				ga_vec3f v_t_dt = v_t_half_dt + a_t_dt.scale_result(0.5f * dt);
+
+				p.set_position(x_t_dt);
+				p.set_acceleration(a_t_dt);
+				p.set_velocity(v_t_dt);
+			}
+		}
+	}
+}
+
 void ga_cloth_component::update(struct ga_frame_params* params)
 {
-	if (_num_parallel_iters == 0)
+	if (_integration_type == Euler)
 	{
-		// serial update
+		update_euler(params);
+	}
+	else if (_integration_type == RK4_serial)
+	{
 		update_rk4(params);
-		//update_euler(params);
+	}
+	else if (_integration_type == Velocity_verlet)
+	{
+		update_velocity_verlet(params);
 	}
 	else
 	{
@@ -379,7 +441,7 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 		// Dispatch the jobs:
 		int32_t update_counter;
 
-		for (int k = 0; k < _num_parallel_iters; k++) {
+		for (int k = 0; k < _num_iterations; k++) {
 			ga_job::run(decls, int(_ny), &update_counter);
 			ga_job::wait(&update_counter);
 		}
@@ -388,7 +450,6 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 	update_draw(params);
 
 	//allow user to update cloth values
-
 	// structural
 	if (params->_button_mask & k_button_r) {
 		//increase the structural
