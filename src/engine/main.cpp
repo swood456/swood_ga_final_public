@@ -19,12 +19,6 @@
 #include "graphics/ga_cube_component.h"
 #include "graphics/ga_program.h"
 
-#include "physics/ga_intersection.tests.h"
-#include "physics/ga_physics_component.h"
-#include "physics/ga_physics_world.h"
-#include "physics/ga_rigid_body.h"
-#include "physics/ga_shape.h"
-
 #include "physics/ga_cloth_component.h"
 #include "graphics/ga_material.h"
 #include "entity/ga_lua_component.h"
@@ -56,7 +50,6 @@ int main(int argc, const char** argv)
 	// Create objects for three phases of the frame: input, sim and output.
 	ga_input* input = new ga_input();
 	ga_sim* sim = new ga_sim();
-	ga_physics_world* world = new ga_physics_world();
 	ga_output* output = new ga_output(input->get_window());
 
 	// Create camera.
@@ -242,9 +235,6 @@ int main(int argc, const char** argv)
 		// Run gameplay.
 		sim->update(&params);
 
-		// Step the physics world.
-		world->step(&params);
-
 		// Perform the late update.
 		sim->late_update(&params);
 
@@ -265,9 +255,7 @@ int main(int argc, const char** argv)
 		output->update(&params);
 	}
 
-
 	delete output;
-	delete world;
 	delete sim;
 	delete input;
 	delete camera;
