@@ -235,7 +235,7 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 			{
 				if ((p.get_position() - _spheres[s]._center).mag() < _spheres[s]._radius)
 				{
-					p.set_position((p.get_position() - _spheres[s]._center).normal().scale_result(_spheres[s]._radius));
+					p.set_position((p.get_position() - _spheres[s]._center).normal().scale_result(_spheres[s]._radius + 0.001f));
 				}
 			}
 		}
