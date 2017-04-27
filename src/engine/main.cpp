@@ -25,8 +25,8 @@
 #include "physics/ga_rigid_body.h"
 #include "physics/ga_shape.h"
 
-#include "physics/ga_cloth.h"
-#include "graphics\ga_material.h"
+#include "physics/ga_cloth_component.h"
+#include "graphics/ga_material.h"
 #include "entity/ga_lua_component.h"
 
 #include "gui/ga_font.h"

@@ -1,8 +1,8 @@
-#include "ga_cloth.h"
+#include "ga_cloth_component.h"
 
 #include "entity/ga_entity.h"
 
-#include "graphics\ga_material.h"
+#include "graphics/ga_material.h"
 #include <iostream>
 
 #include "jobs/ga_job.h"
