@@ -100,7 +100,7 @@ int main(int argc, const char** argv)
 	////////////////////////////////////
 	// tablecloth - serial
 	////////////////////////////////////
-	
+	/*
 	ga_entity cloth_ent;
 	// set up the cloth location and spring constants
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,0.0f,-5.0f },
@@ -122,17 +122,17 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(10, 10);
 
 	sim->add_entity(&cloth_ent);
-	
+	*/
 
 	//////////////////////////////////////////
 	// super parallelized table cloth
 	//////////////////////////////////////////
-	/*
+	
 	ga_entity cloth_ent;
-	int n = 19;
+	int n = 81;
 	// set up the cloth location and spring constants
-	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, n, n, { -5.0f,0.0f,-5.0f },
-	{ 5.0f,0.0f,-5.0f }, { -5.0f,0.0f,5.0f }, { 5.0f,0.0f,5.0f }, 0.5f);
+	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 3, 0.5, 0.01, n, n, { -5.0f,0.0f,-5.0f },
+	{ 5.0f,0.0f,-5.0f }, { -5.0f,0.0f,5.0f }, { 5.0f,0.0f,5.0f }, 3.0f);
 
 	// set up lighting and material color
 	ga_phong_color_material* _material = new ga_phong_color_material();
@@ -144,7 +144,7 @@ int main(int argc, const char** argv)
 	cloth_comp.set_material(_material);
 
 	// set pats of the cloth to be fixed
-	int num_spots_from_edge = 5;
+	int num_spots_from_edge = 20;
 	cloth_comp.set_particle_fixed(num_spots_from_edge, num_spots_from_edge);
 	cloth_comp.set_particle_fixed(num_spots_from_edge, n - num_spots_from_edge - 1);
 	cloth_comp.set_particle_fixed(n - num_spots_from_edge - 1, num_spots_from_edge);
@@ -153,7 +153,7 @@ int main(int argc, const char** argv)
 	cloth_comp.set_num_parallel_iters(3);
 
 	sim->add_entity(&cloth_ent);
-	*/
+	
 	///////////////////////////////////////////
 	// simple cloth, mainly for initial testing
 	///////////////////////////////////////////
