@@ -48,6 +48,12 @@ private:
 	ga_vec3f _offset;
 };
 
+struct imaginary_sphere
+{
+	ga_vec3f _center;
+	float _radius;
+};
+
 class ga_cloth_component : public ga_component
 {
 public:
@@ -80,6 +86,14 @@ public:
 	void update_rk4_row(struct ga_frame_params* params, uint32_t row);
 
 	void set_num_parallel_iters(int n) { _num_parallel_iters = n; }
+
+	void add_sphere(ga_vec3f mid, float radius)
+	{
+		imaginary_sphere ball;
+		ball._center = mid;
+		ball._radius = radius;
+		_spheres.push_back(ball);
+	}
 
 private:
 	void update_euler(struct ga_frame_params* params);
@@ -118,4 +132,6 @@ private:
 	class ga_material* _material;
 
 	int _num_parallel_iters;
+
+	std::vector<imaginary_sphere> _spheres;
 };

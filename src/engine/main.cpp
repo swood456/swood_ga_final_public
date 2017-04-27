@@ -100,7 +100,7 @@ int main(int argc, const char** argv)
 	////////////////////////////////////
 	// tablecloth - serial
 	////////////////////////////////////
-	
+	/*
 	ga_entity cloth_ent;
 	// set up the cloth location and spring constants
 	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,0.0f,-5.0f },
@@ -120,6 +120,30 @@ int main(int argc, const char** argv)
 	cloth_comp.set_particle_fixed(4, 10);
 	cloth_comp.set_particle_fixed(10, 4);
 	cloth_comp.set_particle_fixed(10, 10);
+
+	sim->add_entity(&cloth_ent);
+	*/
+
+
+	//falling cloth on a sphere
+	
+	ga_entity cloth_ent;
+	// set up the cloth location and spring constants
+	ga_cloth_component cloth_comp = ga_cloth_component(&cloth_ent, 2, 0.5, 0.01, 15, 15, { -5.0f,5.0f,-5.0f },
+	{ 5.0f,5.0f,-5.0f }, { -5.0f,5.0f,5.0f }, { 5.0f,5.0f,5.0f }, 0.5f);
+
+	// set up lighting and material color
+	ga_phong_color_material* _material = new ga_phong_color_material();
+	_material->init();
+	_material->set_light_info({ -2.0f, 2, 2.0f }, { 1, 1, 1 }, { 1, 1, 1 }, { 1, 1, 1 });
+	_material->set_material_info({ 0.75f, 0.1f, 0.1f }, { 0.5f, 0.5f, 0.5f }, { 0, 0, 0 }, 0.2f);
+	_material->set_back_material_info({ 0.3f, 0.1f, 0.1f }, { 0.3f, 0.3f, 0.3f }, { 0, 0, 0 }, 0.2f);
+
+	cloth_comp.set_material(_material);
+
+	// set pats of the cloth to be fixed
+
+	cloth_comp.add_sphere({ 0,0,0 }, 2.0f);
 
 	sim->add_entity(&cloth_ent);
 	

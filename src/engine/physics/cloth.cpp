@@ -7,6 +7,8 @@
 
 #include "jobs/ga_job.h"
 
+
+
 ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float sheer_k, float bend_k, uint32_t nx, uint32_t ny,
 	ga_vec3f top_left, ga_vec3f top_right, ga_vec3f bot_left, ga_vec3f bot_right, float fabric_weight) : ga_component(ent)
 {
@@ -227,6 +229,15 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 			p.set_position(p1 + (v1 + v2.scale_result(2) + v3.scale_result(2) + v4).scale_result(dt / 6.0f));
 				
 			p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
+
+			// sphere collision nonsense
+			for (int s = 0; s < _spheres.size(); s++)
+			{
+				if ((p.get_position() - _spheres[s]._center).mag() < _spheres[s]._radius)
+				{
+					p.set_position((p.get_position() - _spheres[s]._center).normal().scale_result(_spheres[s]._radius));
+				}
+			}
 		}
 	}		
 }
@@ -274,6 +285,14 @@ void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t
 
 		p.set_velocity(v1 + (a1 + a2.scale_result(2) + a3.scale_result(2) + a4).scale_result(dt / 6.0f));
 		
+		// sphere collision nonsense
+		for (int s = 0; s < _spheres.size(); s++)
+		{
+			if ((p.get_position() - _spheres[s]._center).mag() < _spheres[s]._radius)
+			{
+				p.set_position((p.get_position() - _spheres[s]._center).normal().scale_result(_spheres[s]._radius));
+			}
+		}
 	}
 }
 
