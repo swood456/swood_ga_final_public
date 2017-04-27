@@ -7,6 +7,9 @@
 
 class ga_material;
 
+/**
+* Enum for type of integration to be used by cloth
+**/
 enum IntegrationType
 {
 	Euler,
@@ -15,6 +18,9 @@ enum IntegrationType
 	Velocity_verlet
 };
 
+/**
+* Cloth particle class
+**/
 class ga_cloth_particle
 {
 public:
@@ -56,55 +62,69 @@ private:
 	ga_vec3f _offset;
 };
 
+/**
+* Cloth component
+**/
 class ga_cloth_component : public ga_component
 {
 public:
-
+	// Constructor
 	ga_cloth_component(ga_entity* ent, float structural_k, float sheer_k, float bend_k, uint32_t nx, uint32_t ny,
 		ga_vec3f top_left, ga_vec3f top_right, ga_vec3f bot_left, ga_vec3f bot_right, float fabric_weight);
 
 	virtual ~ga_cloth_component();
 
+	// Overriden ga_component update function
 	virtual void update(struct ga_frame_params* params) override;
 
-	void set_particle_fixed(int i, int j) {
-		get_particle(i, j).set_fixed(true);
-		get_particle(i, j).set_position(get_particle(i,j).get_original_position());
-	}
+	/**
+	*Public functions to allow cloth particles to be fixed to things
+	**/
+	// Sets cloth particle to be fixed at its current position
+	void set_particle_fixed(int i, int j) { get_particle(i, j).set_fixed(true); }
+	
+	// Sets cloth particle to be fixed at a given position
 	void set_particle_fixed(int i, int j, ga_vec3f fixed_pos) {
 		get_particle(i, j).set_fixed(true);
 		get_particle(i, j).set_position(fixed_pos);
 	}
+	
+	// Sets a particle to be fixed relative to an entity with an offset
 	void set_particle_fixed_ent(int i, int j, ga_entity* ent, ga_vec3f offset) {
 		get_particle(i, j).set_fixed_to_other_entity(ent, offset);
 	}
 
-	void set_material(class ga_material* material);
+	// Public function to set up material
+	void set_material(class ga_material* material) { _material = material; }
 
+	// accessor functions to spring K values
 	float get_k_structural() const { return _structural_k; }
 	float get_k_sheer() const { return _sheer_k; }
 	float get_k_bend() const { return _bend_k; }
 	
-	void update_rk4_row(struct ga_frame_params* params, uint32_t row);
-
+	// Public functions to set up integration type and number of iterations
 	void set_num_iterations(int n) { _num_iterations = n; }
-
 	void set_integration_type(IntegrationType type) { _integration_type = type; }
 
 private:
+
+	// Enum for which type of integration
 	IntegrationType _integration_type;
+	
+	// Various update functions
 	void update_euler(struct ga_frame_params* params);
 	void update_rk4(struct ga_frame_params* params);
+	void update_rk4_row(struct ga_frame_params* params, uint32_t row);
 	void update_velocity_verlet(struct ga_frame_params* params);
-
 	void update_draw(struct ga_frame_params* params);
+
+	// Helper functions to calculate various things in update functions
 	ga_vec3f force_at_pos(int i, int j, ga_vec3f pos);
 	ga_vec3f normal_for_point(int i, int j);
+	ga_vec3f force_between_particles(int i, int j, int k, int l, float spring_k);
+	ga_vec3f force_between_particles_at_pos(int i, int j, int k, int l, ga_vec3f pos, float spring_k);
 
-	ga_vec3f ga_cloth_component::force_between_particles(int i, int j, int k, int l, float spring_k);
-	ga_vec3f ga_cloth_component::force_between_particles_at_pos(int i, int j, int k, int l, ga_vec3f pos, float spring_k);
-
-	// private accessor
+	// private accessor for particles
 	ga_cloth_particle& get_particle(uint32_t i, uint32_t j)
 	{
 		assert(i >= 0 && i < _nx && j >= 0 && j < _ny);
@@ -129,5 +149,6 @@ private:
 	// needed for drawing
 	class ga_material* _material;
 
+	// num iterations for update
 	int _num_iterations;
 };

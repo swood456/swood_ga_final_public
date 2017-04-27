@@ -21,8 +21,9 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 	// set up the mesh of cloth particles
 	_particles = new ga_cloth_particle[nx*ny];
 
-	// this should ideally be changed to use cloth area somehow
 	float mass = fabric_weight / (_nx * _ny);
+
+	// evenly distribute cloth particles across square
 	for (int i = 0; i < nx; i++)
 	{
 		float x = (float)i / (float)(nx - 1);
@@ -44,20 +45,19 @@ ga_cloth_component::ga_cloth_component(ga_entity* ent, float structural_k, float
 	}
 
 	_gravity = { 0.0f, 9.81f, 0.0f };
-
 	_dampening = 0.008f;
-
 	_num_iterations = 1;
-	
+	_integration_type = RK4_serial;
 }
 
-void ga_cloth_component::set_material(ga_material* material) {
-	_material = material;
-}
 
+/**
+* Helper function for drawing that calculates the normal of the mesh
+* at a given vertex by averaging the normals of all triangles
+* around the vertex
+**/
 ga_vec3f ga_cloth_component::normal_for_point(int i, int j)
 {
-
 	ga_vec3f norm_sum = { 0,0,0 };
 	uint32_t num_norms = 0;
 
@@ -97,7 +97,6 @@ ga_vec3f ga_cloth_component::normal_for_point(int i, int j)
 		num_norms++;
 	}
 
-
 	if (num_norms > 0) {
 		norm_sum.scale(1.0f / (float)num_norms);
 	}
@@ -105,8 +104,12 @@ ga_vec3f ga_cloth_component::normal_for_point(int i, int j)
 	return norm_sum.normal();
 }
 
+/**
+* Function that handles drawing the cloth in each update
+**/
 void ga_cloth_component::update_draw(struct ga_frame_params* params)
 {
+	// vectors to keep track of all values given to drawcall
 	std::vector<ga_vec3f> verts;
 	std::vector<GLushort> indices;
 	std::vector<ga_vec3f> norms;
@@ -136,6 +139,7 @@ void ga_cloth_component::update_draw(struct ga_frame_params* params)
 		}
 	}
 
+	// create dynamic draw call and send it
 	ga_dynamic_drawcall draw;
 	draw._name = "ga_cloth_dynamic";
 	draw._color = { 0.0f, 0.5f, 1.0f };
@@ -151,14 +155,17 @@ void ga_cloth_component::update_draw(struct ga_frame_params* params)
 	params->_dynamic_drawcall_lock.clear(std::memory_order_release);
 
 }
-
+/**
+* Helper function that calculates the force acting on a particle
+* at a given position
+**/
 ga_vec3f ga_cloth_component::force_at_pos(int i, int j, ga_vec3f pos)
 {
 	ga_cloth_particle &p = get_particle(i, j);
 	
 	float p_mass = (float)p.get_mass();
 
-	//gravity
+	// gravity
 	ga_vec3f force_vec = _gravity.scale_result(p_mass * -1.0f);
 
 	//structural springs
@@ -167,23 +174,27 @@ ga_vec3f ga_cloth_component::force_at_pos(int i, int j, ga_vec3f pos)
 	force_vec += force_between_particles_at_pos(i, j, i, j - 1, pos, _structural_k);
 	force_vec += force_between_particles_at_pos(i, j, i, j + 1, pos, _structural_k);
 
-	//shear springs
+	// shear springs
 	force_vec += force_between_particles_at_pos(i, j, i - 1, j - 1, pos, _sheer_k);
 	force_vec += force_between_particles_at_pos(i, j, i + 1, j - 1, pos, _sheer_k);
 	force_vec += force_between_particles_at_pos(i, j, i - 1, j + 1, pos, _sheer_k);
 	force_vec += force_between_particles_at_pos(i, j, i + 1, j + 1, pos, _sheer_k);
 
-	//bend springs
+	// bend springs
 	force_vec += force_between_particles_at_pos(i, j, i - 2, j, pos, _bend_k);
 	force_vec += force_between_particles_at_pos(i, j, i + 2, j, pos, _bend_k);
 	force_vec += force_between_particles_at_pos(i, j, i, j - 2, pos, _bend_k);
 	force_vec += force_between_particles_at_pos(i, j, i, j + 2, pos, _bend_k);
 
+	// dampening force
 	force_vec -= p.get_velocity().scale_result(_dampening);
 
 	return force_vec;
 }
 
+/**
+* RK4 serial integration update function
+**/
 void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 {
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count() / _num_iterations;
@@ -196,6 +207,7 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 			{
 				ga_cloth_particle &p = get_particle(i, j);
 
+				// handle particles that are attached to other entities
 				if (p.get_fixed_to_entity()) {
 					ga_entity* ent = p.get_other_entity();
 					ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
@@ -203,6 +215,7 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 					continue;
 				}
 
+				// handle simple fixed particles
 				if (p.get_fixed())
 				{
 					continue;
@@ -210,6 +223,7 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 
 				float p_mass = p.get_mass();
 
+				// RK4 integration
 				ga_vec3f p1 = p.get_position();
 				ga_vec3f v1 = p.get_velocity();
 				ga_vec3f a1 = force_at_pos(i, j, p1).scale_result(1.0f / p_mass);
@@ -234,6 +248,9 @@ void ga_cloth_component::update_rk4(struct ga_frame_params* params)
 	}
 }
 
+/**
+* RK4 parallel integration update function. Only updates a given row.
+**/
 void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t row) {
 	
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
@@ -243,6 +260,7 @@ void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t
 	{
 		ga_cloth_particle &p = get_particle(i, row);
 
+		// handle particles that are attached to other entities
 		if (p.get_fixed_to_entity()) {
 			ga_entity* ent = p.get_other_entity();
 			ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
@@ -250,6 +268,7 @@ void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t
 			continue;
 		}
 
+		// handle simple fixed particles
 		if (p.get_fixed())
 		{
 			continue;
@@ -257,6 +276,7 @@ void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t
 
 		float p_mass = p.get_mass();
 
+		// RK4 integration
 		ga_vec3f p1 = p.get_position();
 		ga_vec3f v1 = p.get_velocity();
 		ga_vec3f a1 = force_at_pos(i, row, p1).scale_result(1.0f / p_mass);
@@ -280,6 +300,9 @@ void ga_cloth_component::update_rk4_row(struct ga_frame_params* params, uint32_t
 	}
 }
 
+/**
+* Euler serial integration update function.
+**/
 void ga_cloth_component::update_euler(struct ga_frame_params* params)
 {
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
@@ -294,11 +317,13 @@ void ga_cloth_component::update_euler(struct ga_frame_params* params)
 			{
 				ga_cloth_particle &p = get_particle(i, j);
 
+				// handle simple fixed
 				if (p.get_fixed())
 				{
 					continue;
 				}
 
+				// handle entity fixed to another entity
 				if (p.get_fixed_to_entity()) {
 					ga_entity* ent = p.get_other_entity();
 					ga_vec3f updated_pos = ent->get_transform().transform_point(p.get_offset());
@@ -342,7 +367,9 @@ void ga_cloth_component::update_euler(struct ga_frame_params* params)
 		}
 	}
 }
-
+/**
+* Velocity Verlet serial integration update function
+**/
 void ga_cloth_component::update_velocity_verlet(struct ga_frame_params* params)
 {
 	float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
@@ -369,19 +396,6 @@ void ga_cloth_component::update_velocity_verlet(struct ga_frame_params* params)
 				}
 
 				float p_mass = p.get_mass();
-				/*
-				// verlet integration without half-step velocity
-				ga_vec3f at = p.get_acceleration();
-				ga_vec3f vt = p.get_velocity();
-
-				p.set_position(p.get_position() + p.get_velocity().scale_result(dt) + p.get_acceleration().scale_result(0.5f * dt * dt));
-
-				ga_vec3f at_t = force_at_pos(i, j, p.get_position()).scale_result(1.0f / p.get_mass());
-
-				p.set_acceleration(at_t);
-
-				p.set_velocity(vt + (at + at_t).scale_result(0.5f * dt));
-				*/
 
 				// verlet integration with half-step velocity
 				ga_vec3f v_t_half_dt = p.get_velocity() + p.get_acceleration().scale_result(0.5f * dt);
@@ -396,7 +410,9 @@ void ga_cloth_component::update_velocity_verlet(struct ga_frame_params* params)
 		}
 	}
 }
-
+/**
+* Component update function that is called by sim
+**/
 void ga_cloth_component::update(struct ga_frame_params* params)
 {
 	if (_integration_type == Euler)
@@ -447,9 +463,10 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 		}
 	}	
 	
+	// draw update
 	update_draw(params);
 
-	//allow user to update cloth values
+	// Collect user input
 	// structural
 	if (params->_button_mask & k_button_r) {
 		//increase the structural
@@ -508,9 +525,13 @@ void ga_cloth_component::update(struct ga_frame_params* params)
 }
 ga_cloth_component::~ga_cloth_component()
 {
-
+	delete[] _particles;
 }
 
+/**
+* Helper function that calculates the spring force between particle(i,j) and
+* particle(k,l) with spring constant k
+**/
 ga_vec3f ga_cloth_component::force_between_particles(int i, int j, int k, int l, float spring_k) {
 
 	if (k < 0 || k >= _nx || l < 0 || l >= _ny) {
@@ -529,6 +550,11 @@ ga_vec3f ga_cloth_component::force_between_particles(int i, int j, int k, int l,
 	return (distance - (normalized_distance.scale_result(resting_length))).scale_result(spring_k);
 }
 
+/**
+* Helper function that calculates the spring force between particle(i,j) and
+* particle(k,l) with spring constant k
+* Used when calculating force on particle(i, j) when it is in a different position
+**/
 ga_vec3f ga_cloth_component::force_between_particles_at_pos(int i, int j, int k, int l, ga_vec3f pos, float spring_k) {
 	
 	if (k < 0 || k >= _nx || l < 0 || l >= _ny) {
