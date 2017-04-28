@@ -15,3 +15,10 @@ Cloth component simulates a square piece of cloth
 * __h__ decrease cloth bend spring constant
 * __u / o__ rotate the textured cube
 * __ijkl__ translate the textured cube
+
+## Files that were changed:
+* __src/engine/main.cpp__: Updated main to have a bunch of different cloth components that can be commented in and out. Also have simple GUI elements to display framerate and spring constants
+* __src/engine/physics/ga_cloth_component.h and .cpp__: Main cloth simulation code
+* __src/engine/graphics/ga_material__: added in phong_color_material, which is the material used for the cloth
+* __src/engine/entity/ga_lua_component.h__: added in simple ijkl movement and rotation using u and o
+* __data/shaders/ga_phong_color shaders__: shaders used for phong lighting on a solid color.
